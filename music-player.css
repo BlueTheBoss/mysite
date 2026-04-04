@@ -1,0 +1,565 @@
+/* =============================================
+   VIBEPLAYER — CLEAN SINGLE-COLUMN REDESIGN
+   ============================================= */
+
+/* Page */
+.vibe-page {
+    background-color: var(--theme-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* Soft top gradient in dark mode for premium depth */
+    background-image: linear-gradient(180deg, var(--theme-bg) 0%, rgba(26, 22, 18, 0) 100%);
+}
+
+/* Header */
+.vibe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 3px dashed var(--divider-dashed); /* Dashed divider as requested */
+    background-color: var(--theme-surface);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    gap: 1rem;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.45rem 1rem;
+    border: 2.5px solid var(--border-color);
+    box-shadow: 3px 3px 0 var(--border-color);
+    background: var(--theme-raised);
+    color: var(--text-color);
+    text-decoration: none;
+    cursor: none !important;
+    transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+}
+
+.back-btn:hover {
+    background: var(--theme-hover);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--border-color);
+}
+
+.back-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--border-color);
+}
+
+.vibe-wordmark {
+    font-size: 1.05rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.vibe-tag {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: var(--accent-tint);
+    color: var(--accent-dark);
+    border: 1px solid var(--accent-strong);
+    padding: 0.15rem 0.5rem;
+    box-shadow: 2.5px 2.5px 0 var(--border-color);
+}
+
+[data-theme="dark"] .vibe-tag {
+    background: var(--accent-tint);
+    color: var(--accent-text);
+}
+
+/* Main */
+.vibe-main {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2.5rem 2rem;
+}
+
+/* The single bordered block containing both panels */
+.vibe-grid {
+    width: 100%;
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 4px solid var(--border-color);
+    box-shadow: 10px 10px 0 var(--border-color);
+    background: var(--theme-card);
+    min-height: 500px;
+    max-height: calc(100vh - 68px - 5rem); /* viewport minus header minus padding */
+    overflow: hidden;
+}
+
+/* =============================================
+   PLAYER CARD
+   ============================================= */
+.player-card {
+    background: var(--theme-card);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    border-right: 4px solid var(--border-color); /* internal divider */
+}
+
+/* ---- Visualizer ---- */
+.visualizer {
+    display: flex;
+    align-items: flex-end;
+    height: 56px;
+    gap: 0;
+    border-bottom: 4px solid var(--border-color);
+    background: var(--theme-surface); /* Fixed Midnight Fog background */
+    padding: 0 3px;
+}
+
+.v-bar {
+    flex: 1;
+    background: var(--accent-strong);
+    height: 3px;        /* JS will set this */
+    margin: 0 1px;
+    transition: height 0.12s ease-out; /* Smooth fade between steps */
+}
+
+/* ---- Track Info ---- */
+.track-info-block {
+    padding: 1.75rem 2rem 1.25rem;
+    border-bottom: 3px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.now-playing-badge {
+    font-size: 0.65rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    background: var(--accent-tint);
+    color: var(--accent-dark);
+    border: 2.5px solid var(--accent-strong);
+    padding: 0.2rem 0.6rem;
+    box-shadow: 2.5px 2.5px 0 var(--border-nav);
+    width: fit-content;
+    margin-bottom: 0.4rem;
+}
+
+[data-theme="dark"] .now-playing-badge {
+    background: var(--accent-tint) !important;
+    color: var(--accent-text) !important;
+    border: 1px solid var(--accent-strong) !important;
+    box-shadow: none !important;
+}
+
+#track-title {
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text-color);
+    margin: 0;
+    transition: opacity 0.25s ease;
+    word-break: break-word;
+}
+
+#track-artist {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+/* ---- Progress ---- */
+.progress-section {
+    padding: 1.25rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-bottom: 3px solid var(--border-color);
+}
+
+.time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.progress-track {
+    height: 16px;
+    background: var(--gray);
+    border: 3px solid var(--border-color);
+    box-shadow: 4px 4px 0 var(--border-color);
+    position: relative;
+    cursor: pointer;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-strong);
+    width: 0%;
+    pointer-events: none;
+    transition: width 0.3s linear;
+}
+
+.progress-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 22px;
+    height: 22px;
+    background: var(--accent-hilite); /* Dark Mode Token */
+    border: 3px solid var(--border-color);
+    box-shadow: 2px 2px 0 var(--border-color);
+    pointer-events: none;
+    transition: left 0.3s linear;
+}
+
+/* ---- Controls ---- */
+.controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 1.5rem 2rem;
+    border-bottom: 3px solid var(--border-color);
+}
+
+.ctrl-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--border-color);
+    background: var(--theme-raised);
+    cursor: none !important;
+    font-family: inherit;
+    color: var(--text-color);
+    transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
+}
+
+[data-theme="dark"] .ctrl-btn:not(.ctrl-lg) {
+    background: var(--bg-raised);
+}
+
+.ctrl-sm {
+    width: 52px;
+    height: 52px;
+    box-shadow: 4px 4px 0 var(--border-color);
+}
+
+.ctrl-xs {
+    width: 42px;
+    height: 42px;
+    box-shadow: 3px 3px 0 var(--border-color);
+}
+
+.ctrl-sm svg {
+    width: 22px;
+    height: 22px;
+    fill: var(--text-color);
+}
+
+.ctrl-xs svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--text-color);
+}
+
+/* Active State for Shuffle/Repeat */
+.ctrl-btn.active {
+    background: var(--theme-active) !important;
+}
+
+.ctrl-btn.active svg {
+    fill: var(--theme-accent-text) !important;
+}
+
+.ctrl-lg {
+    width: 72px;
+    height: 72px;
+    background: var(--accent-strong); /* Fixed Midnight Fog fill */
+    border-width: 4px;
+    box-shadow: 6px 6px 0 var(--border-color);
+}
+
+.ctrl-lg svg {
+    width: 34px;
+    height: 34px;
+    fill: var(--text-btn-primary);
+}
+
+.ctrl-btn:hover {
+    transform: translate(-2px, -2px);
+}
+
+.ctrl-sm:hover {
+    background: var(--theme-hover);
+    box-shadow: 6px 6px 0 var(--border-color);
+}
+
+.ctrl-lg:hover {
+    box-shadow: 8px 8px 0 var(--border-color);
+}
+
+.ctrl-btn:active {
+    transform: translate(2px, 2px) !important;
+    box-shadow: 1px 1px 0 var(--border-color) !important;
+}
+
+/* ---- Volume ---- */
+.volume-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+}
+
+.volume-row svg {
+    fill: var(--text-color);
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+#volume-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.6;
+    min-width: 2.5rem;
+    text-align: right;
+}
+
+.v-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 10px;
+    background: var(--gray);
+    border: 2.5px solid var(--border-color);
+    box-shadow: 3px 3px 0 var(--border-color);
+    outline: none;
+    cursor: pointer;
+}
+
+.v-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--yellow);
+    border: 3px solid var(--border-color);
+    box-shadow: 2px 2px 0 var(--border-color);
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.v-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* =============================================
+   PLAYLIST CARD
+   ============================================= */
+.playlist-card {
+    background: var(--bg-surface); /* Light: #F3EDE3 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .playlist-card,
+[data-theme="dark"] .playlist-list {
+    background: var(--bg-surface) !important; /* Force the warm Midnight Fog surface */
+}
+
+[data-theme="dark"] .pl-item {
+    background: var(--bg-surface) !important; 
+}
+
+[data-theme="dark"] .pl-item:hover {
+    background: var(--bg-nav) !important; 
+}
+
+[data-theme="dark"] .pl-item.active {
+    background: var(--theme-active) !important;
+}
+
+.playlist-card-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.playlist-card-header h2, .pl-count {
+    color: #FFF !important;
+}
+
+[data-theme="dark"] .playlist-card-header {
+    background: var(--bg-surface); 
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .playlist-card-header h2, 
+[data-theme="dark"] .pl-count {
+    color: inherit !important;
+}
+
+.playlist-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;  /* Playlist scrolls inside the card */
+    flex: 1;
+    min-height: 0;
+}
+
+.pl-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 2rem;
+    border-bottom: 2.5px solid var(--border-color);
+    cursor: pointer;
+    background: var(--bg-color);
+    transition: background 0.1s, transform 0.1s;
+    position: relative;
+}
+
+.pl-item:last-child {
+    border-bottom: none;
+}
+
+.pl-item:hover {
+    background: var(--bg-surface);
+}
+
+.pl-item.active {
+    background: var(--accent-base) !important;
+    color: var(--text-btn-primary) !important;
+}
+
+.pl-num {
+    font-size: 0.75rem;
+    font-weight: 900;
+    opacity: 0.4;
+    min-width: 1.5rem;
+    color: inherit;
+}
+
+.pl-item.active .pl-num { opacity: 0.6; color: var(--theme-accent-text); }
+
+.pl-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.pl-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pl-item.active .pl-title,
+.pl-item.active .pl-artist,
+.pl-item.active .pl-num,
+.pl-item.active .pl-time { 
+    color: var(--text-btn-primary) !important; 
+    opacity: 1;
+}
+
+.pl-artist {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-color);
+    opacity: 0.55;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pl-item.active .pl-artist { color: var(--theme-accent-text); opacity: 0.6; }
+
+.pl-dur {
+    font-size: 0.78rem;
+    font-weight: 700;
+    opacity: 0.5;
+    color: var(--text-color);
+    flex-shrink: 0;
+}
+
+.pl-item.active .pl-dur { color: var(--theme-accent-text); }
+
+/* Playing bars on active item */
+.pl-bars {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 18px;
+    flex-shrink: 0;
+    opacity: 0;
+    margin-left: 0.5rem;
+}
+
+.pl-item.active .pl-bars { opacity: 1; }
+
+.pb {
+    width: 3px;
+    background: var(--theme-accent-text); /* Use accent color for playing bars */
+    border-radius: 1px;
+    height: 3px;
+    transform-origin: bottom;
+    transition: none; /* Instant response to JS updates */
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 800px) {
+    .vibe-main {
+        padding: 1.5rem 1rem;
+        align-items: stretch;
+    }
+
+    .vibe-grid {
+        grid-template-columns: 1fr;
+        max-height: none;
+        min-height: auto;
+    }
+
+    .player-card {
+        border-right: none;
+        border-bottom: 4px solid var(--border-color);
+        justify-content: flex-start;
+    }
+
+    #track-title { font-size: 1.5rem; }
+
+    .track-info-block,
+    .progress-section,
+    .controls-row,
+    .volume-row,
+    .pl-item,
+    .playlist-card-header { padding-left: 1.25rem; padding-right: 1.25rem; }
+
+    .ctrl-lg { width: 62px; height: 62px; }
+    .ctrl-sm { width: 46px; height: 46px; }
+}
