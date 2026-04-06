@@ -99,7 +99,7 @@
     box-shadow: 10px 10px 0 var(--border-color);
     background: var(--theme-card);
     min-height: 500px;
-    max-height: calc(100vh - 68px - 5rem); /* viewport minus header minus padding */
+    height: calc(100vh - 68px - 5rem); /* viewport minus header minus padding */
     overflow: hidden;
 }
 
@@ -111,7 +111,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    overflow: hidden;
+    overflow-y: auto;  /* Allow player content to scroll if window is very short */
     border-right: 4px solid var(--border-color); /* internal divider */
 }
 
