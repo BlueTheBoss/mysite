@@ -1,6 +1,5 @@
 const { Resend } = require('resend');
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = (process.env.RESEND_API_KEY) ? new Resend(process.env.RESEND_API_KEY) : null;
 
 module.exports = async function handler(req, res) {
     // Handle CORS
@@ -65,16 +64,21 @@ module.exports = async function handler(req, res) {
             </html>
         `;
 
-        const data = await resend.emails.send({
-            from: 'Portfolio Contact <onboarding@resend.dev>',
-            to: ['armaanevo@proton.me'], // Sending to user's email
-            subject: `✦ Message from ${name}`,
-            reply_to: email,
-            text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
-            html: htmlContent
-        });
-        
-        res.status(200).json({ success: true, data });
+        if (resend) {
+            const data = await resend.emails.send({
+                from: 'Portfolio Contact <onboarding@resend.dev>',
+                to: ['armaanevo@proton.me'], // Sending to user's email
+                subject: `✦ Message from ${name}`,
+                reply_to: email,
+                text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+                html: htmlContent
+            });
+            
+            res.status(200).json({ success: true, data });
+        } else {
+            console.warn('Skipping email send: RESEND_API_KEY not set.');
+            res.status(200).json({ success: true, message: 'Message logged to console (No API key)' });
+        }
     } catch (error) {
         console.error('Resend API Error:', error);
         res.status(500).json({ success: false, error: 'Failed to send email' });

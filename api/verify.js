@@ -1,5 +1,5 @@
 const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
     }
 
     const { pin, env } = req.body;
-    const serverPin = process.env.SECRET_PIN;
+    const serverPin = process.env.SECRET_PIN || '1234'; // Fallback for local dev
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     if (serverPin && pin === serverPin) {
@@ -45,12 +45,16 @@ module.exports = async (req, res) => {
                 </html>
             `;
 
-            await resend.emails.send({
-                from: 'Security Alert <onboarding@resend.dev>',
-                to: ['armaanevo@proton.me'],
-                subject: `Security Alert: Failed PIN Attempt on your Portfolio`,
-                html: htmlAlert
-            });
+            if (resend) {
+                await resend.emails.send({
+                    from: 'Security Alert <onboarding@resend.dev>',
+                    to: ['armaanevo@proton.me'],
+                    subject: `Security Alert: Failed PIN Attempt on your Portfolio`,
+                    html: htmlAlert
+                });
+            } else {
+                console.warn('Skipping security alert email: RESEND_API_KEY not set.');
+            }
         } catch (err) {
             console.error('Failed to send security alert:', err);
         }

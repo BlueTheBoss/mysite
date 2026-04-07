@@ -2,6 +2,7 @@
     /* Midnight Fog — Full Site / Light Mode */
     --bg-page: #F2F6FB;
     --bg-nav: #FFFFFF;
+    --bg-nav-rgb: 255, 255, 255;
     --bg-ticker: #0F2233;
     --bg-card: #D8E6F2;
     --bg-form: #D8E6F2;
@@ -77,6 +78,7 @@
     /* Midnight Fog — Full Site / Dark Mode */
     --bg-page: #0D1824;
     --bg-nav: #152030;
+    --bg-nav-rgb: 21, 32, 48;
     --bg-ticker: #263848;
     --bg-card: #1E2E40;
     --bg-form: #1E2E40;
@@ -215,7 +217,9 @@ body {
 }
 
 .navbar .nav-inner {
-    background-color: var(--bg-nav);
+    background-color: rgba(var(--bg-nav-rgb), 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: var(--border-width) solid var(--border-card);
 }
 
