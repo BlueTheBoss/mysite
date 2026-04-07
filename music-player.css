@@ -19,11 +19,14 @@
     justify-content: space-between;
     padding: 1rem 2rem;
     border-bottom: 3px dashed var(--divider-dashed); /* Dashed divider as requested */
-    background-color: var(--theme-surface);
+    background-color: rgba(var(--bg-nav-rgb, 255, 255, 255), 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: sticky;
     top: 0;
     z-index: 200;
     gap: 1rem;
+    transition: background-color 0.3s var(--ease-out);
 }
 
 .back-btn {
@@ -170,7 +173,7 @@
     line-height: 1.1;
     color: var(--text-color);
     margin: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-elastic);
     word-break: break-word;
 }
 
