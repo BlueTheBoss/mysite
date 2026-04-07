@@ -92,103 +92,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Custom Cursor tracking
     const cursor = document.querySelector('.custom-cursor');
-    const scrollProgress = document.querySelector('.scroll-progress');
-
     if (cursor) {
         document.addEventListener('mousemove', (e) => {
-            // Smoother cursor follow with requestAnimationFrame or simple transform
             cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
         });
         
-        const interactables = document.querySelectorAll('a, button, input, textarea, .project-card, .contact-tile, .theme-toggle-btn, .key-btn');
+        const interactables = document.querySelectorAll('a, button, input, textarea, .project-card, .contact-tile, .theme-toggle-btn');
         interactables.forEach(el => {
             el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
             el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
         });
     }
-
-    // Scroll Progress & Simple Parallax
-    window.addEventListener('scroll', () => {
-        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-        const scrolled = (winScroll / height) * 100;
-        if (scrollProgress) scrollProgress.style.width = scrolled + "%";
-
-        // Hero Parallax
-        const heroGraphic1 = document.querySelector('.graphic-1');
-        const heroGraphic2 = document.querySelector('.graphic-2');
-        if (heroGraphic1) heroGraphic1.style.transform = `translateY(${winScroll * 0.2}px) rotate(${winScroll * 0.05}deg)`;
-        if (heroGraphic2) heroGraphic2.style.transform = `translateY(${winScroll * -0.15}px) rotate(${winScroll * -0.03}deg)`;
-    });
-
-    // Sparkle Click Effect
-    document.addEventListener('click', (e) => {
-        const sparkleCount = 8;
-        for (let i = 0; i < sparkleCount; i++) {
-            const sparkle = document.createElement('div');
-            sparkle.className = 'sparkle';
-            sparkle.style.left = e.clientX + 'px';
-            sparkle.style.top = e.clientY + 'px';
-            
-            // Random direction
-            const angle = (Math.PI * 2 * i) / sparkleCount;
-            const velocity = 50 + Math.random() * 50;
-            const tx = Math.cos(angle) * velocity;
-            const ty = Math.sin(angle) * velocity;
-            
-            sparkle.style.setProperty('--tx', `${tx}px`);
-            sparkle.style.setProperty('--ty', `${ty}px`);
-            
-            document.body.appendChild(sparkle);
-            setTimeout(() => sparkle.remove(), 600);
-        }
-    });
-
-    // Magnetic Buttons
-    const magneticWraps = document.querySelectorAll('.magnetic-wrap');
-    magneticWraps.forEach(wrap => {
-        const btn = wrap.querySelector('a, button');
-        wrap.addEventListener('mousemove', (e) => {
-            const rect = wrap.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            
-            btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-        });
-        
-        wrap.addEventListener('mouseleave', () => {
-            btn.style.transform = `translate(0, 0)`;
-        });
-    });
-
-    // 3D Tilt Effect for Project Cards
-    const tiltCards = document.querySelectorAll('.tilt-card');
-    tiltCards.forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            
-            const rotateX = (y - centerY) / 10;
-            const rotateY = (centerX - x) / 10;
-            
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
-            
-            const shine = card.querySelector('.tilt-shine');
-            if (shine) {
-                const shineX = (x / rect.width) * 100;
-                const shineY = (y / rect.height) * 100;
-                shine.style.background = `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.15) 0%, transparent 80%)`;
-            }
-        });
-        
-        card.addEventListener('mouseleave', () => {
-            card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)`;
-        });
-    });
 
     const contactForm = document.getElementById('contact-form');
     const submitBtn = document.getElementById('submit-btn');
