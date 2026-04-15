@@ -26,6 +26,20 @@
         </div>
     </div>
 
+    <!-- Glitch Recovery Overlay -->
+    <div id="glitch-overlay" class="glitch-overlay">
+        <div class="recovery-container" id="recovery-container">
+            <h2>SYSTEM_CRITICAL_ERROR</h2>
+            <p>Your current build encountered an unstable kernel anomaly. Typical Arch behavior.</p>
+            <div id="button-lobby" style="position: relative; height: 100px; margin-top: 2rem;">
+                <button id="restore-site-btn" class="btn-primary real-btn" style="background: #ff4757; color: white; border-color: #000; position: absolute; left: 50%; transform: translateX(-50%);">RESTORE_SYSTEMS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CRT Scanlines Overlay -->
+    <div id="scanlines" class="scanlines"></div>
+
     <!-- Scroll Progress Bar -->
     <div class="scroll-progress" id="scroll-progress"></div>
 
@@ -278,7 +292,7 @@
 
     <footer class="footer black-bg">
         <div class="footer-inner section-spacing">
-            <div class="footer-left">✦ armevox</div>
+            <div class="footer-left"><span id="secret-trigger" style="cursor: pointer; user-select: none;">✦</span> armevox</div>
             <div class="footer-center">Armaan Ahmad Ansari © 2026</div>
             <div class="footer-right">
                 <a href="#home" class="back-to-top">↑ Back to Top</a>

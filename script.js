@@ -708,4 +708,69 @@ document.addEventListener('DOMContentLoaded', () => {
         const randomIndex = Math.floor(Math.random() * funFacts.length);
         factDisplay.textContent = funFacts[randomIndex];
     }
+
+    // =============================================
+    // 15. GLITCH MODE (TOTAL_MELTDOWN)
+    // =============================================
+    const breakBtn = document.getElementById('secret-trigger');
+    const restoreBtn = document.getElementById('restore-site-btn');
+    const glitchOverlay = document.getElementById('glitch-overlay');
+    const recoveryContainer = document.getElementById('recovery-container');
+    const buttonLobby = document.getElementById('button-lobby');
+
+    if (breakBtn && restoreBtn && glitchOverlay && buttonLobby) {
+        let meltDownInterval;
+
+        const spawnDummies = () => {
+            buttonLobby.querySelectorAll('.dummy-btn').forEach(b => b.remove());
+            for (let i = 0; i < 6; i++) {
+                const dummy = document.createElement('button');
+                dummy.className = 'btn-primary dummy-btn';
+                dummy.textContent = 'RESTORE_SYSTEMS';
+                dummy.style.background = '#333';
+                buttonLobby.appendChild(dummy);
+                
+                dummy.addEventListener('click', () => {
+                    showToast("❌ ERROR: ACCESS_DENIED_BY_KERNEL");
+                    dummy.classList.add('shake');
+                    setTimeout(() => dummy.classList.remove('shake'), 400);
+                });
+            }
+        };
+
+        breakBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.body.classList.add('glitch-active');
+            glitchOverlay.classList.add('show');
+            spawnDummies();
+            showToast("⚠️ KERNEL_PANIC: Total system meltdown initiated.");
+            
+            // Randomly shake the recovery container
+            meltDownInterval = setInterval(() => {
+                recoveryContainer.style.transform = `translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)`;
+            }, 100);
+        });
+
+        // Button Evasion Logic
+        restoreBtn.addEventListener('mouseover', () => {
+            if (!document.body.classList.contains('glitch-active')) return;
+            
+            const areaWidth = buttonLobby.offsetWidth - 150;
+            const areaHeight = buttonLobby.offsetHeight - 50;
+            
+            const newX = Math.random() * areaWidth - (areaWidth / 2);
+            const newY = Math.random() * areaHeight - (areaHeight / 2);
+            
+            restoreBtn.style.transform = `translate(${newX}px, ${newY}px)`;
+            showToast("⚠️ ERROR: TARGET_UNSTABLE");
+        });
+
+        restoreBtn.addEventListener('click', () => {
+            document.body.classList.remove('glitch-active');
+            glitchOverlay.classList.remove('show');
+            clearInterval(meltDownInterval);
+            restoreBtn.style.transform = 'translateX(-50%)'; // Reset position
+            showToast("✅ CRITICAL_FIX: System stabilized. You're lucky.");
+        });
+    }
 });
