@@ -11,11 +11,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230D1824'/%3E%3Cpath fill='%235B8DB8' d='M35 25h30v40c0 5.5-4.5 10-10 10s-10-4.5-10-10 4.5-10 10-10v-25h-20v25c0 5.5-4.5 10-10 10s-10-4.5-10-10 4.5-10 10-10v-30z'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='30' fill='%230D1824'/%3E%3Cpath fill='%235B8DB8' d='M50 20 L58 42 L80 50 L58 58 L50 80 L42 58 L20 50 L42 42 Z'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+    <!-- Page Load Curtain (Split Reveal) -->
+    <div class="page-loader" id="page-loader">
+        <div class="loader-panel loader-left"></div>
+        <div class="loader-panel loader-right"></div>
+        <div class="loader-brand">
+            <span class="loader-icon">✦</span>
+            <span class="loader-name">armevox</span>
+        </div>
+    </div>
+
+    <!-- Scroll Progress Bar -->
+    <div class="scroll-progress" id="scroll-progress"></div>
+
     <!-- Custom Cursor -->
     <div class="custom-cursor"></div>
 
@@ -26,10 +39,10 @@
                 <span class="logo-icon">✦</span> armevox
             </div>
             <div class="nav-links">
-                <a href="#home">Home</a>
-                <a href="/#services">Services</a>
-                <a href="/#portfolio">Projects</a>
-                <a href="/#contact">Contact</a>
+                <a href="#about" data-section="about">About</a>
+                <a href="#services" data-section="services">Focus</a>
+                <a href="#portfolio" data-section="portfolio">Works</a>
+                <a href="#contact" data-section="contact">Contact</a>
                 <a href="#" id="nav-vibeplayer" class="vibe-nav-link">VibePlayer ✦</a>
                 <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Dark Mode">Dark Mode</button>
             </div>
@@ -41,10 +54,13 @@
         <section id="home" class="hero section-spacing">
             <div class="hero-left">
                 <div class="decorative-graphic graphic-1"></div>
-                <h1 class="reveal-left">Hey, I'm <span class="highlight">Armaan Ahmad Ansari</span></h1>
+                <h1 class="hero-title">
+                    <span class="text-mask"><span class="slide-up-text">Hey, I'm</span></span>
+                    <span class="text-mask highlight-wrapper"><span class="highlight slide-up-text delay-200">Armaan Ahmad Ansari</span></span>
+                </h1>
                 <p class="reveal-left delay-100"
                     style="font-size: 1.25rem; font-weight: 500; margin-bottom: 2rem; max-width: 600px; line-height: 1.6;">
-                    I'm a <span id="age-span">15</span>-year-old developer from India, currently surviving 11th-grade Computer Science. I spend an unhealthy amount of time compiling AOSP, building Custom Android ROMs, daily-driving Linux, and vibecoding late into the night. When I'm not fighting my violently unstable homeserver, I'm probably listening to music, watching movies or admiring the moon.
+                    I'm a <span id="age-span">16</span>-year-old developer from India, currently surviving 11th-grade Computer Science (mostly by vibecoding). I spend an unhealthy amount of time compiling AOSP, building Custom Android ROMs that definitely shouldn't boot, and daily-driving Linux. When I'm not fighting my violently unstable homeserver, I'm probably listening to music, watching movies, or admiring the moon. I write code, break things, and occasionally fix them.
                 </p>
                 <a href="#portfolio" class="btn-primary reveal-left delay-200" aria-label="See Portfolio">See My Work</a>
                 <div class="decorative-graphic graphic-2"></div>
@@ -59,67 +75,113 @@
             </div>
         </section>
 
+        <!-- Bento About Section -->
+        <section id="about" class="section-spacing">
+            <h2 class="section-title reveal" data-scramble>Digital Arsenal &<br>After-Hours</h2>
+            
+            <div class="bento-grid">
+                <!-- Arch Box -->
+                <div class="bento-card sketchy-box bento-wide reveal bg-blue">
+                    <div class="bento-label">Daily Driver</div>
+                    <h3>Arch Linux</h3>
+                    <p>Yes, I use it. (And yes, it took 3 hours to install). Minimalist, rolling release, and perfectly broken when I need a challenge.</p>
+                </div>
+                
+                <!-- Mastery Box -->
+                <div class="bento-card sketchy-box reveal delay-100">
+                    <div class="bento-label">Core Stack</div>
+                    <h3>Java & Python</h3>
+                    <p>Mastering the spells of low-level Android builds and high-level automation scripts.</p>
+                </div>
+
+                <!-- Music Box -->
+                <div class="bento-card sketchy-box reveal delay-200 bg-yellow">
+                    <div class="bento-label">Vibe</div>
+                    <h3>Indie Soul</h3>
+                    <p>Audiophile tendencies and a deep love for indie music that the mainstream would probably call "slightly weird."</p>
+                </div>
+
+                <!-- Gaming Box -->
+                <div class="bento-card sketchy-box reveal delay-300">
+                    <div class="bento-label">The Lobby</div>
+                    <h3>Gaming</h3>
+                    <p>Minecraft, GTA V, and COD. Testing 3 AM reflexes when the terminal gets too quiet.</p>
+                </div>
+
+                <!-- Polyglot Box -->
+                <a href="https://github.com/BlueTheBoss" target="_blank" class="bento-card sketchy-box bento-wide reveal delay-100 bg-footer" style="text-decoration: none; color: inherit;">
+                    <div class="bento-label">Experience</div>
+                    <h3>The Polyglot Spirit</h3>
+                    <p style="color: var(--text-footer);">Check my GitHub for the dozen other languages I've "experimented" with. Curiosity is my main operating system.</p>
+                </a>
+            </div>
+        </section>
+
         <!-- Marquee Section -->
         <section class="marquee-section black-bg">
             <div class="marquee-content">
-                <span>Linux Enjoyer</span>
-                <span>Vibecoding</span>
-                <span>Moon Lover</span>
-                <span>Music & Movies</span>
+                <span>Linux Daily Driver</span>
+                <span>Code Weaver</span>
+                <span>Moon Admirer</span>
+                <span>Cinephile</span>
+                <span>Audiophile</span>
                 <span>Potterhead</span>
-                <span>Homeserver Host</span>
+                <span>Self-Host Enthusiast</span>
+                <span>AOSP Tinkerer</span>
                 <!-- Duplicate for seamless scroll -->
-                <span aria-hidden="true">Linux Enjoyer</span>
-                <span aria-hidden="true">Vibecoding</span>
-                <span aria-hidden="true">Moon Lover</span>
-                <span aria-hidden="true">Music & Movies</span>
+                <span aria-hidden="true">Linux Daily Driver</span>
+                <span aria-hidden="true">Code Weaver</span>
+                <span aria-hidden="true">Moon Admirer</span>
+                <span aria-hidden="true">Cinephile</span>
+                <span aria-hidden="true">Audiophile</span>
                 <span aria-hidden="true">Potterhead</span>
-                <span aria-hidden="true">Homeserver Host</span>
+                <span aria-hidden="true">Self-Host Enthusiast</span>
+                <span aria-hidden="true">AOSP Tinkerer</span>
             </div>
         </section>
 
         <!-- Services Section -->
         <section id="services" class="services section-spacing">
-            <h2 class="section-title services-title reveal">
-                Things I actually<br>spend time doing
+            <h2 class="section-title services-title reveal" data-scramble>
+                My Specialized Curiosities<br>& Midnight Obsessions
             </h2>
-
+ 
             <div class="services-container">
                 <div class="stats-box sketchy-border reveal-left">
                     <div class="stat-item border-bottom">
-                        <h3 class="stat-num">1</h3>
+                        <h3 class="stat-num">Unstable</h3>
                         <p class="stat-label">Homeserver</p>
                     </div>
                     <div class="stat-item">
-                        <h3 class="stat-num">∞</h3>
-                        <p class="stat-label">Hours listening to music</p>
+                        <h3 class="stat-num">Infinite</h3>
+                        <p class="stat-label">Musical Immersion</p>
                     </div>
                 </div>
-
+ 
                 <div class="services-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
                     <div class="service-card sketchy-border border-right border-bottom reveal delay-100">
                         <h4>AOSP & Custom ROMs</h4>
-                        <p>Compiling Android from source, building custom ROMs, and squeezing every last drop of performance out of mobile hardware.</p>
+                        <p>Compiling Android from source and squeezing every drop of performance out of hardware that was never meant to run this fast.</p>
                     </div>
                     <div class="service-card sketchy-border border-bottom reveal delay-200">
                         <h4>Linux & Self-Hosting</h4>
-                        <p>I daily-drive Linux and host my own services on a custom homeserver. Because the cloud is just someone else's computer.</p>
+                        <p>The cloud is just someone else's computer. I prefer mine sitting in a corner, occasionally catching fire, and running Linux.</p>
                     </div>
                     <div class="service-card sketchy-border border-right border-bottom reveal delay-300">
                         <h4>Vibecoding</h4>
-                        <p>Writing highly questionable code at 3 AM while blasting music. It's an absolute aesthetic and a lifestyle choice.</p>
+                        <p>The sacred art of writing questionable code at 3 AM while the VibePlayer keeps the sanity in check. Aesthetic first, logic later.</p>
                     </div>
                     <div class="service-card sketchy-border border-bottom reveal delay-100">
                         <h4>The CS Grind</h4>
-                        <p>Currently navigating 11th-grade Computer Science in India. Learning full-stack, Java, Python, and low-level systems.</p>
+                        <p>Navigating the labyrinth of 11th-grade CS. Learning the ancient spells of systems, low-level logic, and why semi-colons hate me.</p>
                     </div>
                     <div class="service-card sketchy-border border-right reveal delay-200">
                         <h4>Music Addict</h4>
-                        <p>Honestly? My main priority. Everything else (including compiling code) comfortably takes second place.</p>
+                        <p>Let's be real: My terminal is just a background for my playlists. Everything else comfortably takes second place.</p>
                     </div>
                     <div class="service-card sketchy-border reveal delay-300">
                         <h4>Moon & Movies</h4>
-                        <p>When I step away from the terminal, I'm watching movies, curating music playlists, and admiring the moon.</p>
+                        <p>Lover of celestial bodies and cinematic masterpieces. If I'm not at the desk, I'm probably moon-gazing or lost in a plot twist.</p>
                     </div>
                 </div>
             </div>
@@ -128,45 +190,45 @@
         <!-- Portfolio Section -->
         <section id="portfolio" class="portfolio section-spacing">
             <div class="portfolio-header reveal">
-                <h2 class="section-title">
+                <h2 class="section-title" data-scramble>
                     My <span class="bordered-text">Projects & Designs</span>
                 </h2>
             </div>
 
             <div class="portfolio-grid">
-                <!-- Project 1 -->
-                <div class="project-card sketchy-box reveal">
+                <!-- Project 1: Amixi -->
+                <a href="https://github.com/BlueTheBoss/armixi_bot" target="_blank" class="project-card sketchy-box reveal" style="text-decoration: none; color: inherit;">
                     <div class="project-info">
                         <div>
-                            <h4>Designed Wallpaper</h4>
-                            <p>Digital Art / Graphics</p>
+                            <h4>Amixi: The AI Sentinel</h4>
+                            <p>Telegram AI Assistant • Groq • Remembrance System</p>
                         </div>
                     </div>
-                </div>
-                <!-- Project 2 -->
-                <div class="project-card sketchy-box reveal delay-100">
+                </a>
+                <!-- Project 2: ArmChat -->
+                <a href="https://github.com/BlueTheBoss/armchat" target="_blank" class="project-card sketchy-box reveal delay-100" style="text-decoration: none; color: inherit;">
                     <div class="project-info">
                         <div>
-                            <h4>Profile Photos</h4>
-                            <p>Creative avatars and PFPs</p>
+                            <h4>ArmChat: Digital Sanctuary</h4>
+                            <p>Real-time Messaging • Digital Oasis Architecture</p>
                         </div>
                     </div>
-                </div>
-                <!-- Project 3 -->
+                </a>
+                <!-- Project 3: VibePlayer -->
                 <div class="project-card sketchy-box reveal delay-200">
                     <div class="project-info">
                         <div>
-                            <h4>Interactive Site</h4>
-                            <p>Web Development / UI Design</p>
+                            <h4>VibePlayer Experience</h4>
+                            <p>Interactive Audio • Physics-based UI • Secret Access</p>
                         </div>
                     </div>
                 </div>
-                <!-- Project 4 -->
+                <!-- Project 4: AOSP -->
                 <div class="project-card sketchy-box reveal delay-300">
                     <div class="project-info">
                         <div>
-                            <h4>API Integration</h4>
-                            <p>Backend / Full Stack</p>
+                            <h4>AOSP & System Mods</h4>
+                            <p>Custom Android Builds • Low-level C++ • Linux Kernel</p>
                         </div>
                     </div>
                 </div>
@@ -175,9 +237,8 @@
 
         <!-- CTA Section -->
         <section id="contact" class="cta-section section-spacing">
-            <h2 class="section-title center-text reveal">Let's connect</h2>
-            <p class="center-text reveal delay-100" style="margin-bottom: 3rem; font-size: 1.25rem;">Find me on my
-                socials or reach out via email.</p>
+            <h2 class="section-title center-text reveal" data-scramble>Let's connect</h2>
+            <p class="center-text reveal delay-100" style="margin-bottom: 2rem; font-size: 1.15rem;">Find me on the interwebs or drop a message into the void.</p>
 
             <div class="contact-grid reveal-left delay-200">
                 <a href="https://t.me/armevox" target="_blank" class="contact-tile sketchy-box">
@@ -188,25 +249,21 @@
                     <h3>Instagram</h3>
                     <p>@armevox</p>
                 </a>
-                <a href="https://discordapp.com/users/armevox" target="_blank" class="contact-tile sketchy-box">
-                    <h3>Discord</h3>
-                    <p>@armevox</p>
-                </a>
-                <a href="https://github.com/armevox" target="_blank" class="contact-tile sketchy-box">
+                <a href="https://github.com/BlueTheBoss" target="_blank" class="contact-tile sketchy-box">
                     <h3>GitHub</h3>
-                    <p>@armevox</p>
+                    <p>@BlueTheBoss</p>
                 </a>
             </div>
 
-            <div class="cta-box sketchy-box center-text reveal delay-300" style="margin-top: 4rem;">
-                <h3>Send an Email </h3>
-                <form id="contact-form" class="contact-form" style="margin-top: 2rem;">
-                    <input type="text" id="name" placeholder="Your Name" required class="form-input sketchy-border">
-                    <input type="email" id="email" placeholder="Your Email" required class="form-input sketchy-border">
-                    <textarea id="message" placeholder="Your Message" required class="form-input sketchy-border"
-                        rows="4"></textarea>
-                    <button type="submit" class="btn-primary" id="submit-btn"
-                        style="margin-top: 1rem; width: 100%;">Send Message</button>
+            <div class="cta-box sketchy-box center-text reveal delay-300" style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 1.25rem;">✉ Send a Message</h3>
+                <form id="contact-form" class="contact-form compact-form">
+                    <div class="form-row">
+                        <input type="text" id="name" placeholder="Name" required class="form-input sketchy-border">
+                        <input type="email" id="email" placeholder="Email" required class="form-input sketchy-border">
+                    </div>
+                    <textarea id="message" placeholder="Your message..." required class="form-input sketchy-border" rows="3"></textarea>
+                    <button type="submit" class="btn-primary" id="submit-btn">Send Message</button>
                 </form>
             </div>
         </section>
