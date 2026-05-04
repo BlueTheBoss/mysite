@@ -205,7 +205,7 @@ body {
     top: 0;
     left: 0;
     transform: translate(-50%, -50%);
-    transition: width 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), height 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
     background-color: transparent;
 }
 
@@ -292,8 +292,8 @@ a {
     border: var(--border-width) solid var(--border-card);
     box-shadow: 6px 6px 0px 0px var(--border-card);
     position: relative;
-    /* Sketchy animation transition for hover */
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, background-color 0.3s ease;
+    /* Smooth animation transition for hover */
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, background-color 0.4s ease;
 }
 
 .sketchy-box:hover {
@@ -345,7 +345,10 @@ main > section:not(:last-child) {
 
 /* Buttons */
 .btn-primary {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
     background-color: var(--bg-btn-primary);
     color: var(--text-btn-primary);
     border: var(--border-width) solid var(--border-card);
@@ -356,7 +359,8 @@ main > section:not(:last-child) {
     cursor: pointer;
     border-radius: 40px; /* Pill shape */
     box-shadow: 4px 4px 0px 0px var(--border-card);
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, background-color 0.2s ease;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, background-color 0.3s ease, padding 0.3s ease;
+    overflow: hidden; /* For shine effect */
 }
 
 .btn-primary:hover {
@@ -459,7 +463,7 @@ main > section:not(:last-child) {
     font-family: inherit;
     cursor: pointer;
     vertical-align: middle;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, background-color 0.2s ease;
+    transition: transform 0.3s ease-out, box-shadow 0.2s ease, background-color 0.2s ease;
     color: var(--text-color);
     box-shadow: 2px 2px 0px 0px var(--border-color);
     margin-left: 0.5rem;
@@ -566,7 +570,7 @@ main > section:not(:last-child) {
     background-color: var(--gray);
     padding: 12px;
     transform: rotate(-2deg);
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-img-container:hover {
@@ -1417,6 +1421,55 @@ body::after {
     opacity: 0.55;
 }
 
+/* --- Premium "See My Work" Enhancements --- */
+.btn-work {
+    background: linear-gradient(135deg, var(--bg-btn-primary) 0%, var(--accent-strong) 100%);
+    position: relative;
+    letter-spacing: 0.02em;
+}
+
+.btn-work .btn-icon {
+    display: flex;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-work:hover .btn-icon {
+    transform: translate(3px, -3px) scale(1.1);
+}
+
+.btn-work::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    transform: skewX(-25deg);
+    transition: none;
+    pointer-events: none;
+}
+
+.btn-work:hover::after {
+    animation: shine-btn 0.75s forwards;
+}
+
+@keyframes shine-btn {
+    0% { left: -100%; }
+    100% { left: 150%; }
+}
+
+[data-theme="dark"] .btn-work {
+    background: linear-gradient(135deg, var(--accent-base) 0%, var(--accent-strong) 100%);
+    box-shadow: 4px 4px 0px 0px var(--border-card),
+                0 0 20px -5px var(--accent-base);
+}
+
 /* --- Cursor Trail Dot --- */
 .cursor-trail {
     width: 8px;
@@ -1603,7 +1656,7 @@ body::after {
     opacity: 0;
     transform: translateY(40px) scale(0.95);
     filter: blur(6px);
-    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.6s ease;
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.8s ease;
 }
 
 .cascade-card.cascaded {
@@ -1652,17 +1705,14 @@ main {
 
 /* --- 11. Counter Pop Animation --- */
 .stat-num {
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.8s ease-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .stat-num.counted {
-    animation: counterPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes counterPop {
-    0% { transform: scale(0.5); opacity: 0; }
-    60% { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
+    opacity: 1;
+    transform: scale(1);
 }
 
 /* --- 12. Parallax subtle offset (applied via JS) --- */
