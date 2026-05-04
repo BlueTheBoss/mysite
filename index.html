@@ -17,30 +17,10 @@
 </head>
 
 <body>
-    <!-- Page Load Curtain (Split Reveal) -->
-    <div class="page-loader" id="page-loader">
-        <div class="loader-panel loader-left"></div>
-        <div class="loader-panel loader-right"></div>
-        <div class="loader-brand">
-            <span class="loader-icon">✦</span>
-            <span class="loader-name">armevox</span>
-        </div>
-    </div>
+    <!-- Main Content -->
 
-    <!-- Glitch Recovery Overlay -->
-    <div id="glitch-overlay" class="glitch-overlay">
-        <div class="recovery-container" id="recovery-container">
-            <h2>SYSTEM_CRITICAL_ERROR</h2>
-            <p>Your current build encountered an unstable kernel anomaly. Typical Arch behavior.</p>
-            <div id="button-lobby" style="position: relative; height: 100px; margin-top: 2rem;">
-                <button id="restore-site-btn" class="btn-primary real-btn"
-                    style="background: #ff4757; color: white; border-color: #000; position: absolute; left: 50%; transform: translateX(-50%);">RESTORE_SYSTEMS</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- CRT Scanlines Overlay -->
-    <div id="scanlines" class="scanlines"></div>
+    <!-- Glitch Mode Removed -->
+    
 
     <!-- Scroll Progress Bar -->
     <div class="scroll-progress" id="scroll-progress"></div>
@@ -67,32 +47,36 @@
 
     <main>
         <!-- Hero Section -->
-        <section id="home" class="hero section-spacing">
-            <div class="hero-left">
-                <div class="decorative-graphic graphic-1"></div>
-                <h1 class="hero-title">
-                    <span class="text-mask"><span class="slide-up-text">Hey, I'm</span></span>
-                    <span class="text-mask highlight-wrapper"><span class="highlight slide-up-text delay-200">Armaan
-                            Ahmad Ansari</span></span>
-                </h1>
-                <p class="reveal-left delay-100"
-                    style="font-size: 1.25rem; font-weight: 500; margin-bottom: 2rem; max-width: 600px; line-height: 1.6;">
-                    I'm a <span id="age-span">15</span>-year-old developer from India, currently surviving 11th-grade
-                    Computer Science (mostly by vibecoding). I spend an unhealthy amount of time compiling AOSP,
-                    building Custom Android ROMs that definitely shouldn't boot, and daily-driving Linux. When I'm not
-                    fighting my violently unstable homeserver, I'm probably listening to music, watching movies, or
-                    admiring the moon. I write code, break things, and occasionally fix them.
-                </p>
-                <a href="#portfolio" class="btn-primary reveal-left delay-200" aria-label="See Portfolio">See My
-                    Work</a>
-                <div class="decorative-graphic graphic-2"></div>
+        <!-- Hero Section -->
+        <section id="home" class="hero">
+            <div class="hero-bg-glow"></div>
+            
+            <div class="hero-banner-wrap reveal">
+                <div class="hero-banner-main"></div>
+                <div class="banner-overlay"></div>
             </div>
-            <div class="hero-right reveal-right delay-200">
-                <div class="profile-img-container sketchy-box">
-                    <img src="assets/flower.jpg"
-                        onerror="if(!this.hasFailed){this.hasFailed=true; this.src='assets/flower.png';}" alt="Profile"
-                        class="profile-img">
-                    <div class="floating-badge">✦ armevox</div>
+            
+            <div class="hero-content-center section-spacing">
+                <div class="hero-profile-wrap">
+                    <div class="profile-img-container sketchy-box reveal">
+                        <img src="assets/pfp.jpg" alt="Profile" class="profile-img">
+                        <div class="floating-badge">✦ armevox</div>
+                    </div>
+                </div>
+                
+                <div class="hero-text-wrap">
+                    <h1 class="hero-title reveal">
+                        Hey, I'm <span class="highlight">Armaan Ahmad Ansari</span>
+                    </h1>
+                    <p class="hero-bio reveal">
+                        I'm a <span id="age-span">15</span>-year-old developer from India, currently surviving 11th-grade
+                        Computer Science (mostly by vibecoding). I spend an unhealthy amount of time compiling AOSP,
+                        building Custom Android ROMs, and daily-driving Linux. I write code, break things, and occasionally fix them.
+                    </p>
+                    <div class="hero-actions reveal delay-400">
+                        <a href="#portfolio" class="btn-primary" aria-label="See Portfolio">See My Work</a>
+                        <a href="#contact" class="btn-secondary" aria-label="Contact Me">Get in Touch</a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -101,9 +85,9 @@
         <section id="about" class="section-spacing">
             <h2 class="section-title reveal" data-scramble>Digital Arsenal &<br>After-Hours</h2>
 
-            <div class="bento-grid">
+            <div class="bento-grid-system">
                 <!-- Arch Box -->
-                <div class="bento-card sketchy-box bento-wide reveal bg-blue">
+                <div class="bento-card-item sketchy-box span-2 reveal bg-blue">
                     <div class="bento-label">Daily Driver</div>
                     <h3>Arch Linux</h3>
                     <p>Yes, I use it. (And yes, it took 3 hours to install). Minimalist, rolling release, and perfectly
@@ -111,14 +95,14 @@
                 </div>
 
                 <!-- Mastery Box -->
-                <div class="bento-card sketchy-box reveal delay-100">
+                <div class="bento-card-item sketchy-box reveal delay-100">
                     <div class="bento-label">Core Stack</div>
                     <h3>Java & Python</h3>
                     <p>Mastering the spells of low-level Android builds and high-level automation scripts.</p>
                 </div>
 
                 <!-- Music Box -->
-                <div class="bento-card sketchy-box reveal delay-200 bg-yellow">
+                <div class="bento-card-item sketchy-box reveal delay-200 bg-yellow">
                     <div class="bento-label">Vibe</div>
                     <h3>Indie Soul</h3>
                     <p>Audiophile tendencies and a deep love for indie music that the mainstream would probably call
@@ -126,22 +110,23 @@
                 </div>
 
                 <!-- Gaming Box -->
-                <div class="bento-card sketchy-box reveal delay-300">
+                <div class="bento-card-item sketchy-box reveal delay-300">
                     <div class="bento-label">The Lobby</div>
                     <h3>Gaming</h3>
                     <p>Minecraft, GTA V, and COD. Testing 3 AM reflexes when the terminal gets too quiet.</p>
                 </div>
 
                 <!-- Fun Fact Box -->
-                <div class="bento-card sketchy-box reveal delay-200 bg-dark" id="fun-fact-card">
-                    <div class="bento-label" style="color: var(--accent-base);">Random Insight</div>
-                    <h3 id="fun-fact-text" style="font-size: 1.25rem; color: var(--text-ticker);">Loading trivia...</h3>
-                    <p style="font-size: 0.85rem; opacity: 0.7; color: var(--text-footer);">Refresh for a new fact</p>
+                <div class="bento-card-item sketchy-box reveal delay-200 bg-dark" id="fun-fact-card">
+                    <div class="bento-label">Random Insight</div>
+                    <div class="fact-icon">✦</div>
+                    <h3 id="fun-fact-text">Loading trivia...</h3>
+                    <p class="fact-sub">Refresh for a new fact</p>
                 </div>
 
                 <!-- Polyglot Box -->
                 <a href="https://github.com/BlueTheBoss" target="_blank"
-                    class="bento-card sketchy-box bento-wide reveal delay-100 bg-footer"
+                    class="bento-card-item sketchy-box span-2 reveal delay-100 bg-footer"
                     style="text-decoration: none; color: inherit;">
                     <div class="bento-label">Experience</div>
                     <h3>The Polyglot Spirit</h3>
@@ -318,7 +303,7 @@
                 </a>
             </div>
 
-            <div class="cta-box sketchy-box center-text reveal delay-300" style="margin-top: 3rem;">
+            <div class="cta-box sketchy-box center-text reveal delay-300" style="margin-top: 2rem;">
                 <h3 style="margin-bottom: 1.25rem;">✉ Send a Message</h3>
                 <form id="contact-form" class="contact-form compact-form">
                     <div class="form-row">
