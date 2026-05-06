@@ -45,8 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rootElement = document.documentElement;
     
     const getSystemDefaultTheme = () => {
-        const hour = new Date().getHours();
-        return (hour >= 19 || hour < 7) ? 'dark' : 'light';
+        return 'dark';
     };
 
     const savedTheme = localStorage.getItem('theme');

@@ -73,6 +73,10 @@
     --blue: var(--accent-base);
     --white: var(--bg-nav);
     --gray: var(--bg-card);
+
+    /* --- MISSING VARIABLES --- */
+    --home-tag-bg: var(--accent-base);
+    --home-name-text: var(--bg-page);
 }
 
 [data-theme="dark"] {
@@ -142,6 +146,10 @@
     --border-color: var(--text-primary);
     --white: var(--bg-nav);
     --gray: var(--bg-card);
+
+    /* --- MISSING VARIABLES (DARK) --- */
+    --home-tag-bg: var(--accent-hilite);
+    --home-name-text: var(--bg-page);
 }
 
 [data-theme="dark"] .black-bg {
@@ -541,6 +549,11 @@ main > section:not(:last-child) {
 }
 
 .banner-overlay {
+    display: none;
+}
+
+[data-theme="dark"] .banner-overlay {
+    display: block;
     position: absolute;
     inset: 0;
     background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3) 80%, var(--bg-page));
@@ -1823,6 +1836,12 @@ main {
 [data-theme="dark"] .bg-yellow { background-color: #C4A484; }
 [data-theme="dark"] .bg-dark { background-color: #152030; }
 [data-theme="dark"] .bg-footer { background-color: #1E2E40; }
+
+/* Dark mode contrast fix for yellow card text */
+[data-theme="dark"] .bg-yellow h3,
+[data-theme="dark"] .bg-yellow p {
+    color: var(--bg-page) !important;
+}
 
 /* Fact Card Centering */
 #fun-fact-card {
