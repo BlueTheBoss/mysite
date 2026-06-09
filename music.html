@@ -23,6 +23,7 @@
         </a>
         <span class="vibe-wordmark">✦ armevox <span class="vibe-tag">VibePlayer</span></span>
         <button id="theme-toggle" class="theme-toggle-btn">Dark Mode</button>
+        <button id="shortcuts-btn" class="shortcuts-btn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button>
     </header>
 
     <!-- Main -->
@@ -105,6 +106,26 @@
     </main>
 
     <audio id="audio-player" preload="metadata"></audio>
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="shortcuts-modal" role="dialog" aria-label="Keyboard shortcuts">
+        <div class="shortcuts-content neubrutalism-box">
+            <div class="shortcuts-header">
+                <h2>Keyboard Shortcuts</h2>
+                <button id="shortcuts-close" class="shortcuts-close" aria-label="Close">×</button>
+            </div>
+            <ul class="shortcuts-list">
+                <li><kbd>Space</kbd>  <span>Play / Pause</span></li>
+                <li><kbd>→</kbd>      <span>Next Track</span></li>
+                <li><kbd>←</kbd>      <span>Previous Track</span></li>
+                <li><kbd>↑</kbd>      <span>Volume Up (+5%)</span></li>
+                <li><kbd>↓</kbd>      <span>Volume Down (−5%)</span></li>
+                <li><kbd>M</kbd>      <span>Mute / Unmute</span></li>
+                <li><kbd>S</kbd>      <span>Toggle Shuffle</span></li>
+                <li><kbd>R</kbd>      <span>Cycle Repeat</span></li>
+            </ul>
+        </div>
+    </div>
+
     <script src="music-player.js"></script>
 </body>
 </html>

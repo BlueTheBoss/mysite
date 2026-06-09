@@ -563,3 +563,145 @@
     .ctrl-lg { width: 62px; height: 62px; }
     .ctrl-sm { width: 46px; height: 46px; }
 }
+
+/* =============================================
+   FEATURE 17: KEYBOARD SHORTCUTS MODAL
+   ============================================= */
+
+/* Shortcuts button in header */
+.shortcuts-btn {
+    background: transparent;
+    border: 2.5px solid var(--border-color);
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+    font-weight: 900;
+    font-family: inherit;
+    cursor: none !important;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 2px 2px 0 var(--border-color);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shortcuts-btn:hover {
+    background: var(--accent-tint);
+    transform: translate(-2px, -2px) rotate(10deg);
+    box-shadow: 4px 4px 0 var(--border-color);
+}
+
+.shortcuts-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--border-color);
+}
+
+/* Backdrop */
+.shortcuts-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.shortcuts-modal.show {
+    display: flex;
+    animation: modalFadeIn 0.2s ease;
+}
+
+/* Modal card */
+.shortcuts-content.neubrutalism-box {
+    min-width: min(340px, 92vw);
+    max-width: 420px;
+    width: 100%;
+    padding: 2rem;
+}
+
+.shortcuts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2.5px solid currentColor;
+}
+
+.shortcuts-header h2 {
+    font-size: 1.05rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 0;
+}
+
+.shortcuts-close {
+    background: none;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: inherit;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.shortcuts-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .shortcuts-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.shortcuts-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.shortcuts-list li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.shortcuts-list span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 0.2rem 0.55rem;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 2px 2px 0 var(--border-color);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-align: center;
+    white-space: nowrap;
+    background: var(--theme-raised);
+    color: var(--text-color);
+    flex-shrink: 0;
+}
+

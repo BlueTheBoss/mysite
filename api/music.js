@@ -1,5 +1,14 @@
 const { Dropbox } = require('dropbox');
 const mm = require('music-metadata');
+const crypto = require('crypto');
+
+// Must match the function in api/verify.js exactly
+function generateSessionToken(secretPin) {
+    return crypto
+        .createHmac('sha256', secretPin)
+        .update('music_session_v1')
+        .digest('hex');
+}
 
 // Initialize Dropbox client
 const config = {};
@@ -38,13 +47,30 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 module.exports = async (req, res) => {
     try {
-        // 0. Security Check
-        const clientPin = req.headers['x-pin'];
-        const serverPin = process.env.SECRET_PIN;
-        
-        if (!serverPin || clientPin !== serverPin) {
-            console.warn(`Unauthorized music API access attempt from ${req.ip}`);
-            return res.status(401).json({ error: 'Unauthorized', details: 'A valid PIN is required.' });
+        // 0. Security Check — validate HMAC session token (not the raw PIN)
+        const clientToken = req.headers['x-session-token'];
+        const serverPin   = process.env.SECRET_PIN;
+
+        if (!serverPin || !clientToken) {
+            console.warn(`Unauthorized music API access attempt — missing token`);
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const expectedToken = generateSessionToken(serverPin);
+        let tokenValid = false;
+        try {
+            // Timing-safe compare prevents length-based timing attacks
+            tokenValid = crypto.timingSafeEqual(
+                Buffer.from(clientToken),
+                Buffer.from(expectedToken)
+            );
+        } catch {
+            tokenValid = false; // Buffers of different length throw — treat as invalid
+        }
+
+        if (!tokenValid) {
+            console.warn(`Unauthorized music API access attempt — invalid token`);
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
         // 1. Check Credentials

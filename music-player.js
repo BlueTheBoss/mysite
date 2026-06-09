@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const resp = await fetch('/api/music', {
-                headers: { 'x-pin': authPin }
+                headers: { 'x-session-token': authPin }
             });
             
             if (resp.status === 401) {
@@ -484,12 +484,42 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.textContent = activeTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
     }
 
+    // =============================================
+    // FEATURE 14: CIRCULAR THEME TRANSITION (VibePlayer)
+    // =============================================
+    const applyThemeTransition = (btn, targetTheme) => {
+        const rect = btn.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top  + rect.height / 2);
+        const newBg = targetTheme === 'dark' ? '#0D1824' : '#F2F6FB';
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = [
+            'position:fixed', 'inset:0', 'z-index:99998', 'pointer-events:none',
+            `background:${newBg}`,
+            `clip-path:circle(0px at ${x}px ${y}px)`,
+            'transition:clip-path 0.55s cubic-bezier(0.4,0,0.2,1)',
+        ].join(';');
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            overlay.style.clipPath = `circle(200vmax at ${x}px ${y}px)`;
+        }));
+
+        setTimeout(() => {
+            root.setAttribute('data-theme', targetTheme);
+            localStorage.setItem('theme', targetTheme);
+            btn.textContent = targetTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            overlay.style.transition = 'clip-path 0.4s cubic-bezier(0.4,0,0.2,1)';
+            overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+            setTimeout(() => overlay.remove(), 420);
+        }, 520);
+    };
+
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            const dark = root.getAttribute('data-theme') === 'dark';
-            root.setAttribute('data-theme', dark ? 'light' : 'dark');
-            themeToggle.textContent = dark ? 'Dark Mode' : 'Light Mode';
-            localStorage.setItem('theme', dark ? 'light' : 'dark');
+            const newTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyThemeTransition(themeToggle, newTheme);
         });
     }
 
@@ -529,8 +559,28 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'r':
                 repeatBtn.click();
                 break;
+            case 'escape': {
+                const modal = document.getElementById('shortcuts-modal');
+                if (modal) modal.classList.remove('show');
+                break;
+            }
         }
     });
+
+    // =============================================
+    // FEATURE 17: KEYBOARD SHORTCUTS MODAL
+    // =============================================
+    const shortcutsBtn   = document.getElementById('shortcuts-btn');
+    const shortcutsModal = document.getElementById('shortcuts-modal');
+    const shortcutsClose = document.getElementById('shortcuts-close');
+
+    if (shortcutsBtn && shortcutsModal) {
+        shortcutsBtn.addEventListener('click', () => shortcutsModal.classList.add('show'));
+        shortcutsClose?.addEventListener('click', () => shortcutsModal.classList.remove('show'));
+        shortcutsModal.addEventListener('click', e => {
+            if (e.target === shortcutsModal) shortcutsModal.classList.remove('show');
+        });
+    }
 
     // ---- Init ----
     fetchTracks();

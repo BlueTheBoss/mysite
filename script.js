@@ -39,6 +39,129 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     determineAge();
 
+    // =============================================
+    // HERO UPGRADES
+    // =============================================
+
+    // --- A. Staggered Word Reveal on Hero Title ---
+    (function () {
+        const heroTitle = document.querySelector('.hero-title');
+        if (!heroTitle) return;
+
+        const nodes = Array.from(heroTitle.childNodes);
+        heroTitle.style.cssText = 'opacity:1;transform:none;filter:none;';
+        heroTitle.classList.remove('reveal');
+        heroTitle.innerHTML = '';
+
+        const items = [];
+        nodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                node.textContent.trim().split(/\s+/).filter(Boolean).forEach(w => {
+                    items.push({ type: 'text', content: w });
+                });
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                items.push({ type: 'element', node: node.cloneNode(true) });
+            }
+        });
+
+        items.forEach((item, i) => {
+            const wrap = document.createElement('span');
+            wrap.className = 'word-wrap';
+            const inner = document.createElement('span');
+            inner.className = 'word-inner';
+            if (item.type === 'text') {
+                inner.textContent = item.content;
+            } else {
+                inner.appendChild(item.node);
+            }
+            wrap.appendChild(inner);
+            heroTitle.appendChild(wrap);
+            if (i < items.length - 1) heroTitle.appendChild(document.createTextNode('\u00a0'));
+        });
+
+        setTimeout(() => {
+            heroTitle.querySelectorAll('.word-inner').forEach((el, i) => {
+                setTimeout(() => el.classList.add('word-revealed'), i * 130);
+            });
+        }, 600);
+    })();
+
+    // --- B. Hero Particle Canvas ---
+    (function () {
+        const canvas = document.getElementById('hero-particles');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let W, H;
+        const particles = [];
+
+        const resize = () => {
+            W = canvas.width  = canvas.offsetWidth;
+            H = canvas.height = canvas.offsetHeight;
+        };
+        resize();
+        window.addEventListener('resize', resize, { passive: true });
+
+        const N = 55;
+        const mk = () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            r: Math.random() * 1.5 + 0.4,
+            vx: (Math.random() - 0.5) * 0.25,
+            vy: -(Math.random() * 0.35 + 0.08),
+            a: Math.random() * 0.45 + 0.08,
+        });
+        for (let i = 0; i < N; i++) particles.push(mk());
+
+        const tick = () => {
+            requestAnimationFrame(tick);
+            ctx.clearRect(0, 0, W, H);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.y < -4 || p.x < -4 || p.x > W + 4) {
+                    Object.assign(p, mk(), { y: H + 4, x: Math.random() * W });
+                }
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(91,141,184,${p.a})`;
+                ctx.fill();
+            });
+        };
+        tick();
+    })();
+
+    // --- C. Rotating Typing Subtitle ---
+    (function () {
+        const el = document.getElementById('typing-role');
+        if (!el) return;
+        const roles = [
+            'AOSP Tinkerer',
+            'Linux Daily Driver',
+            'Vibecoder',
+            'Audiophile',
+            'Moon Admirer',
+            'Potterhead',
+            'Self-Host Enthusiast',
+            'Cinephile',
+        ];
+        let ri = 0, ci = 0, deleting = false;
+
+        const typeStep = () => {
+            const word = roles[ri];
+            if (!deleting) {
+                el.textContent = word.slice(0, ci + 1);
+                ci++;
+                if (ci === word.length) { deleting = true; setTimeout(typeStep, 2200); return; }
+            } else {
+                el.textContent = word.slice(0, ci - 1);
+                ci--;
+                if (ci === 0) { deleting = false; ri = (ri + 1) % roles.length; setTimeout(typeStep, 350); return; }
+            }
+            setTimeout(typeStep, deleting ? 45 : 95);
+        };
+        setTimeout(typeStep, 2000);
+    })();
+
     
     // Theme setup
     const themeToggle = document.getElementById('theme-toggle');
@@ -57,17 +180,44 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.textContent = activeTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
     }
 
+    // =============================================
+    // FEATURE 14: CIRCULAR THEME TRANSITION
+    // =============================================
+    const applyThemeTransition = (btn, targetTheme) => {
+        const rect = btn.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top  + rect.height / 2);
+        const newBg = targetTheme === 'dark' ? '#0D1824' : '#F2F6FB';
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = [
+            'position:fixed', 'inset:0', 'z-index:99998', 'pointer-events:none',
+            `background:${newBg}`,
+            `clip-path:circle(0px at ${x}px ${y}px)`,
+            'transition:clip-path 0.55s cubic-bezier(0.4,0,0.2,1)',
+        ].join(';');
+        document.body.appendChild(overlay);
+
+        // Double rAF ensures the browser registers the start state before transitioning
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            overlay.style.clipPath = `circle(200vmax at ${x}px ${y}px)`;
+        }));
+
+        setTimeout(() => {
+            rootElement.setAttribute('data-theme', targetTheme);
+            localStorage.setItem('theme', targetTheme);
+            btn.textContent = targetTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            // Shrink back to reveal the newly-applied theme
+            overlay.style.transition = 'clip-path 0.4s cubic-bezier(0.4,0,0.2,1)';
+            overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+            setTimeout(() => overlay.remove(), 420);
+        }, 520);
+    };
+
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            if (rootElement.getAttribute('data-theme') === 'dark') {
-                rootElement.setAttribute('data-theme', 'light');
-                themeToggle.textContent = 'Dark Mode';
-                localStorage.setItem('theme', 'light');
-            } else {
-                rootElement.setAttribute('data-theme', 'dark');
-                themeToggle.textContent = 'Light Mode';
-                localStorage.setItem('theme', 'dark');
-            }
+            const newTheme = rootElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyThemeTransition(themeToggle, newTheme);
         });
     }
     
@@ -321,13 +471,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================
     // 12. COUNTER POP on stat numbers
     // =============================================
-    const statNums = document.querySelectorAll('.stat-num');
+    // =============================================
+    // FEATURE 11: COUNT-UP ANIMATION on stat numbers
+    // =============================================
+    const statNums = document.querySelectorAll('.stat-num[data-target]');
     const counterObserver = new IntersectionObserver((entries, obs) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('counted');
-                obs.unobserve(entry.target);
-            }
+            if (!entry.isIntersecting) return;
+            const el       = entry.target;
+            const target   = parseInt(el.getAttribute('data-target'), 10);
+            const suffix   = el.getAttribute('data-suffix') || '';
+            const duration = 1400;
+            const start    = performance.now();
+            el.classList.add('counted');
+
+            const tick = (now) => {
+                const elapsed  = Math.min(now - start, duration);
+                const progress = elapsed / duration;
+                const eased    = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+                el.textContent = Math.round(eased * target) + suffix;
+                if (progress < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+            obs.unobserve(el);
         });
     }, { threshold: 0.5 });
     statNums.forEach(el => counterObserver.observe(el));
@@ -570,11 +736,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await resp.json();
 
             if (resp.ok && data.success) {
-                // Store auth in session (lasts until browser tab is closed)
-                sessionStorage.setItem('music_auth', pinValue);
-                
-                // Save PIN persistently for 30 days
-                setCookie('music_auth', pinValue, 30);
+                // Store the server-issued session token (never the raw PIN)
+                setCookie('music_auth', data.token, 30);
                 
                 showToast("Access Granted! Opening VibePlayer...");
                 setTimeout(() => {
@@ -707,6 +870,63 @@ document.addEventListener('DOMContentLoaded', () => {
         const randomIndex = Math.floor(Math.random() * funFacts.length);
         factDisplay.textContent = funFacts[randomIndex];
     }
+
+    // =============================================
+    // FEATURE 12: KONAMI CODE EASTER EGG  ↑↑↓↓←→←→BA
+    // =============================================
+    (function () {
+        const SEQ = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown',
+                     'ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+        let pos = 0;
+
+        const spawnConfetti = () => {
+            const palette = ['#5B8DB8','#C4A484','#E8F2FA','#3A6E9E','#FFD700','#FF6B9D'];
+            for (let i = 0; i < 80; i++) {
+                setTimeout(() => {
+                    const c = document.createElement('div');
+                    const size = 5 + Math.random() * 8;
+                    c.style.cssText = [
+                        'position:fixed', 'pointer-events:none', 'z-index:999999',
+                        `left:${Math.random() * 100}vw`, 'top:-12px',
+                        `width:${size}px`, `height:${size}px`,
+                        `border-radius:${Math.random() > 0.5 ? '50%' : '2px'}`,
+                        `background:${palette[Math.floor(Math.random() * palette.length)]}`,
+                        `animation:confettiFall ${1.8 + Math.random() * 1.8}s linear ${Math.random() * 0.4}s forwards`,
+                    ].join(';');
+                    document.body.appendChild(c);
+                    c.addEventListener('animationend', () => c.remove());
+                }, Math.random() * 200);
+            }
+        };
+
+        const triggerKonami = () => {
+            const overlay = document.createElement('div');
+            overlay.className = 'konami-overlay';
+            overlay.innerHTML = `
+                <div class="konami-text">🎮 CHEAT CODE ACTIVATED</div>
+                <div class="konami-sub">↑↑↓↓←→←→BA — nice one, Armaan.</div>
+            `;
+            document.body.appendChild(overlay);
+            spawnConfetti();
+            requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
+
+            const dismiss = () => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 350);
+            };
+            setTimeout(dismiss, 3500);
+            overlay.addEventListener('click', dismiss);
+        };
+
+        window.addEventListener('keydown', e => {
+            if (e.key === SEQ[pos]) {
+                pos++;
+                if (pos === SEQ.length) { triggerKonami(); pos = 0; }
+            } else {
+                pos = (e.key === SEQ[0]) ? 1 : 0;
+            }
+        });
+    })();
 
     // Glitch Mode — Removed
 });

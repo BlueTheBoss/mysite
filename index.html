@@ -50,6 +50,7 @@
         <!-- Hero Section -->
         <section id="home" class="hero">
             <div class="hero-bg-glow"></div>
+            <canvas id="hero-particles" class="hero-particles"></canvas>
             
             <div class="hero-banner-wrap reveal">
                 <div class="hero-banner-main"></div>
@@ -73,6 +74,9 @@
                         Computer Science (mostly by vibecoding). I spend an unhealthy amount of time compiling AOSP,
                         building Custom Android ROMs, and daily-driving Linux. I write code, break things, and occasionally fix them.
                     </p>
+                    <div class="typing-container reveal delay-300">
+                        <span class="typing-prefix">// </span><span id="typing-role"></span><span class="typing-cursor-blink">_</span>
+                    </div>
                     <div class="hero-actions reveal delay-400">
                         <a href="#portfolio" class="btn-primary btn-work" aria-label="See Portfolio">
                             See My Work
@@ -173,12 +177,12 @@
             <div class="services-container">
                 <div class="stats-box sketchy-border reveal-left">
                     <div class="stat-item border-bottom">
-                        <h3 class="stat-num">Unstable</h3>
-                        <p class="stat-label">Homeserver</p>
+                        <h3 class="stat-num" data-target="6" data-suffix="+">0+</h3>
+                        <p class="stat-label">Projects Built</p>
                     </div>
                     <div class="stat-item">
-                        <h3 class="stat-num">Infinite</h3>
-                        <p class="stat-label">Musical Immersion</p>
+                        <h3 class="stat-num" data-target="3" data-suffix="+">0+</h3>
+                        <p class="stat-label">Years of Code</p>
                     </div>
                 </div>
 
