@@ -40,6 +40,34 @@ document.addEventListener('DOMContentLoaded', () => {
     determineAge();
 
     // =============================================
+    // DYNAMIC NEUBRUTALISM (Direction 1)
+    // =============================================
+
+    // 1. Sortable Bento Grid
+    const bentoGrid = document.querySelector('.bento-grid-system');
+    if (bentoGrid && typeof Sortable !== 'undefined') {
+        new Sortable(bentoGrid, {
+            animation: 250,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+            delay: 100, // slight delay for mobile scrolling support
+            delayOnTouchOnly: true
+        });
+    }
+
+    // 2. Animated SVG Wobble Filter
+    const wobbleNoise = document.getElementById('wobble-noise');
+    let wobbleSeed = 0;
+    if (wobbleNoise) {
+        // Update seed constantly to jitter the SVG displacement
+        setInterval(() => {
+            wobbleSeed += 1;
+            wobbleNoise.setAttribute('seed', wobbleSeed);
+        }, 120); // 120ms gives it a classic 8fps "boiling lines" animation feel
+    }
+
+    // =============================================
     // HERO UPGRADES
     // =============================================
 

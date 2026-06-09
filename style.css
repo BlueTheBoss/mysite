@@ -299,9 +299,9 @@ a {
     background-color: var(--bg-card);
     border: var(--border-width) solid var(--border-card);
     box-shadow: 6px 6px 0px 0px var(--border-card);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.5s ease, border-color 0.5s ease;
     position: relative;
-    /* Smooth animation transition for hover */
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, background-color 0.4s ease;
+    filter: url(#wobble); /* Apply the SVG hand-drawn displacement map */
 }
 
 .sketchy-box:hover {
@@ -486,13 +486,13 @@ main > section:not(:last-child) {
 /* ------------- HERO ------------- */
 .hero {
     position: relative;
-    min-height: 100vh;
+    min-height: 80vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     overflow: hidden;
     background: var(--bg-page);
-    padding-top: 80px;
+    padding-top: 0;
 }
 
 .hero-bg-glow {
@@ -507,68 +507,26 @@ main > section:not(:last-child) {
     z-index: 1;
 }
 
-.hero-banner-wrap {
-    position: absolute;
-    top: 10%;
-    width: 90%;
-    max-width: 1400px;
-    height: 450px;
-    z-index: 2;
-    border-radius: 40px;
-    overflow: hidden;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.hero-banner-main {
-    width: 100%;
-    height: 100%;
-    background-image: url('assets/banner.jpg');
-    background-size: cover;
-    background-position: center;
-    image-rendering: pixelated;
-    animation: pan-slow 30s infinite linear alternate;
-}
-
-@keyframes pan-slow {
-    from { background-position: 0% 50%; }
-    to { background-position: 100% 50%; }
-}
-
-/* (second banner-wrap block removed — consolidated above) */
-
-.hero-banner-wrap {
-    position: absolute;
-    top: 5%;
-    width: 95%;
-    max-width: 1400px;
-    height: 500px;
-    z-index: 2;
-    border-radius: 50px;
-    overflow: hidden;
-    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.4);
-    border: 2px solid rgba(255, 255, 255, 0.05);
-}
-
-.banner-overlay {
-    display: none;
-}
-
-[data-theme="dark"] .banner-overlay {
-    display: block;
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3) 80%, var(--bg-page));
-}
-
-.hero-content-center {
+.hero-content-split {
     position: relative;
     z-index: 10;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    text-align: center;
-    margin-top: 200px; /* Refined overlap depth */
+    justify-content: space-between;
+    text-align: left;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    gap: 4rem;
+    padding-top: 1rem; /* override .section-spacing to push closer to nav */
+}
+
+@media (max-width: 768px) {
+    .hero-content-split {
+        flex-direction: column;
+        text-align: center;
+    }
 }
 
 .hero-profile-wrap {
@@ -601,13 +559,14 @@ main > section:not(:last-child) {
 }
 
 .hero-text-wrap {
-    max-width: 900px;
+    max-width: 650px;
+    flex: 1;
 }
 
 .hero-title {
-    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
     font-weight: 800;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     color: var(--text-primary);
     letter-spacing: -0.03em;
     line-height: 1.1;
@@ -631,9 +590,9 @@ main > section:not(:last-child) {
 }
 
 .hero-bio {
-    font-size: clamp(1rem, 4vw, 1.35rem);
-    max-width: 750px;
-    margin: 0 auto 2.5rem;
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
+    max-width: 100%;
+    margin: 0 0 2rem;
     color: var(--text-secondary);
     line-height: 1.7;
     opacity: 0;
@@ -652,8 +611,9 @@ main > section:not(:last-child) {
 
 .hero-actions {
     display: flex;
-    gap: 1.5rem;
-    justify-content: center;
+    gap: 1.25rem;
+    justify-content: flex-start;
+    margin-top: 2rem;
     opacity: 0;
     transform: translateY(20px);
     animation: reveal-up 0.8s forwards 1.2s;
@@ -673,15 +633,6 @@ main > section:not(:last-child) {
 .btn-secondary:hover {
     background: var(--border-color);
     color: var(--bg-page);
-}
-
-
-
-.profile-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border: var(--border-width) solid var(--border-color);
 }
 
 .floating-badge {
@@ -1395,8 +1346,6 @@ body::after {
     }
 }
 
-/* Old hero logic purged */
-
 /* --- Floating Profile Image --- */
 .profile-img-container {
     animation: heroFloat 5s ease-in-out infinite;
@@ -1556,8 +1505,6 @@ body::after {
    PHASE 2: ALL REMAINING PREMIUM EFFECTS
    ============================================ */
 
-/* Page Loader — Removed */
-
 /* --- 2. Scroll Progress Bar --- */
 .scroll-progress {
     position: fixed;
@@ -1591,8 +1538,6 @@ body::after {
 }
 
 /* --- 5. Animated Glint Sweep on Highlight Text --- */
-/* Keep the original .highlight and ::after block intact (solid bg, text color) */
-/* Add a light sweep glint on top via ::before */
 .highlight::before {
     content: '';
     position: absolute;
@@ -1626,7 +1571,6 @@ body::after {
 }
 
 .highlight::after {
-    /* restore original — undo the display:none override */
     display: block;
 }
 
@@ -1654,8 +1598,6 @@ body::after {
 }
 
 /* --- 7. Marquee Hover Interaction --- */
-/* Smooth slow-down handled in base .marquee-content rules */
-
 .marquee-content span {
     transition: color 0.2s ease, transform 0.2s ease;
     cursor: default;
@@ -1799,8 +1741,29 @@ main {
 }
 
 .bento-card-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 8px 8px 0px 0px var(--border-card);
+    transform: translateY(-4px) rotate(1deg);
+    box-shadow: 8px 8px 0px 0px var(--border-color);
+}
+
+/* SortableJS Drag States */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--bg-surface) !important;
+}
+
+.sortable-drag {
+    transform: scale(1.05) rotate(3deg) !important;
+    box-shadow: 12px 12px 0px 0px var(--border-color) !important;
+    z-index: 100;
+    cursor: grabbing !important;
+}
+
+.bento-card-item {
+    cursor: grab;
+}
+
+.bento-card-item:active {
+    cursor: grabbing;
 }
 
 .bento-card-item.span-2 {
@@ -1884,21 +1847,15 @@ main {
 
 /* --- 16. Hero Responsive Polishing --- */
 @media (max-width: 900px) {
-    .hero-banner-wrap {
-        height: 400px;
-        top: 2%;
-        width: 100%;
-        border-radius: 0 0 40px 40px;
+    .hero-content-split {
+        flex-direction: column-reverse;
+        text-align: center;
+        gap: 3rem;
+        margin-top: 4rem;
     }
     
-    .hero-banner-main {
-        animation: none; /* Disable panning on mobile */
-        background-position: center;
-    }
-    
-    .hero-content-center {
-        margin-top: 180px;
-    }
+    .hero-bio { margin: 0 auto 2rem; }
+    .hero-actions { justify-content: center; }
     
     .profile-img-container {
         width: 220px;
@@ -1916,12 +1873,9 @@ main {
 }
 
 @media (max-width: 480px) {
-    .hero-banner-wrap {
-        height: 320px;
-    }
-    
-    .hero-content-center {
-        margin-top: 120px; /* Pull up more for mobile balance */
+    .hero-content-split {
+        margin-top: 2rem;
+        gap: 2rem;
     }
     
     .profile-img-container {
