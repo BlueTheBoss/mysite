@@ -1,155 +1,122 @@
 :root {
-    /* Midnight Fog — Full Site / Light Mode */
-    --bg-page: #F2F6FB;
+    /* =========================================
+       DEEP OCEAN (BLUEISH) - LIGHT MODE
+       ========================================= */
+    --bg-page: #E6F2FF;
     --bg-nav: #FFFFFF;
     --bg-nav-rgb: 255, 255, 255;
-    --bg-ticker: #0F2233;
-    --bg-card: #D8E6F2;
-    --bg-form: #D8E6F2;
-    --bg-input: #EBF2F9;
-    --bg-footer: #1E2E40;
-    --bg-name-highlight: #5B8DB8;
-    --bg-btn-primary: #5B8DB8;
-    --accent-tag: #5B8DB8;
-    --accent-base-rgb: 91, 141, 184;
+    --bg-ticker: #D9EBFF;
+    --bg-card: #FFFFFF;
+    --bg-form: #FFFFFF;
+    --bg-input: #CCE0FF;
+    --bg-footer: #CCE0FF;
+    --bg-name-highlight: #0088FF;
+    --bg-btn-primary: #001A33;
     
-    --text-primary: #0F2233;
-    --text-secondary: #2C4A63;
-    --text-muted: #6B8FAA;
-    --text-ticker: #F2F6FB;
-    --text-footer: #A8C4DC;
-    --text-btn-primary: #F2F6FB;
-    --text-name: #F2F6FB;
+    --accent-base: #0044CC; /* Electric Blue */
+    --accent-base-rgb: 0, 68, 204;
+    --accent-tag: #0088FF; /* Vibrant Blue */
+    --accent-tint: #0088FF;
+    --accent-strong: #002266; /* Deep Blue */
+    --accent-dark: #001133;
     
-    --border-nav: #A8C4DC;
-    --border-card: #0F2233;
-    --border-input: #A8C4DC;
-    --border-footer-top: #3A6E9E;
-    --divider-dashed: #3A6E9E;
-
-    /* --- PIN PAD SPECIFIC (LIGHT) --- */
-    --pin-bg: #3A6E9E;
-    --pin-key-bg: #F2F6FB;
-    --pin-clear-bg: #DDEAF6;
-    --pin-delete-bg: #C4D8EA;
-    --pin-display-bg: #E8F0F8;
-    --pin-label-text: var(--text-name);
-    --pin-key-text: #0F2233;
-    --pin-clear-text: #1E4A6E;
-    --pin-delete-text: #1E4A6E;
-    --pin-dot-empty: #A8C4DC;
-    --pin-dot-filled: #3A6E9E;
-    --pin-border: #0F2233;
-
-    /* Semantic Tokens */
-    --accent-tint: #DDEAF6;
-    --accent-base: #5B8DB8;
-    --accent-strong: #3A6E9E;
-    --accent-dark: #1E4A6E;
-
-    /* Functional Mappings */
-    --theme-bg: var(--bg-page);
-    --theme-surface: #E8F0F8;
-    --theme-card: var(--bg-card);
-    --theme-raised: var(--bg-input);
+    --text-primary: #001A33; /* Very Dark Blue */
+    --text-secondary: #003366;
+    --text-muted: #4D79FF;
+    --text-ticker: #001A33;
+    --text-footer: #003366;
+    --text-btn-primary: #FFFFFF;
+    --text-name: #FFFFFF;
     
-    --theme-active: var(--bg-btn-primary);
-    --theme-hover: #C4D8EA;
-    --theme-accent-bg: var(--accent-tint);
-    --theme-accent-text: var(--accent-dark);
-    
-    --text-main: var(--text-primary);
-    --text-dim: var(--text-secondary);
-    --text-ghost: var(--text-muted);
+    --border-nav: #001A33;
+    --border-card: #001A33;
+    --border-input: #001A33;
+    --border-footer-top: #001A33;
+    --divider-dashed: #001A33;
 
     /* Base Logic Mapping */
     --bg-color: var(--bg-page);
     --text-color: var(--text-primary);
-    --border-color: var(--text-primary);
-    --border-width: 2.5px;
+    --border-color: var(--border-card);
+    --border-width: 3px; 
     
-    --yellow: #C4A484; /* Midnight Gold/Tan */
-    --yellow-light: var(--accent-tag);
-    --blue: var(--accent-base);
-    --white: var(--bg-nav);
-    --gray: var(--bg-card);
+    --yellow: #0088FF; /* Replaced Yellow with Vibrant Blue */
+    --blue: #0044CC; /* Electric Blue */
+    --neon: #00FFFF; /* Cyan */
+    --white: #FFFFFF;
+    --gray: #CCE0FF;
 
-    /* --- MISSING VARIABLES --- */
     --home-tag-bg: var(--accent-base);
-    --home-name-text: var(--bg-page);
+    --home-name-text: var(--text-primary);
+    
+    /* Functional Themes */
+    --theme-bg: var(--bg-page);
+    --theme-surface: var(--bg-card);
+    --theme-card: var(--bg-card);
+    --theme-raised: var(--bg-input);
+    --theme-active: var(--bg-btn-primary);
+    --theme-hover: #D9EBFF;
+    --theme-accent-bg: var(--accent-tint);
+    --theme-accent-text: var(--text-primary);
 }
 
 [data-theme="dark"] {
-    /* Midnight Fog — Full Site / Dark Mode */
-    --bg-page: #0D1824;
-    --bg-nav: #152030;
-    --bg-nav-rgb: 21, 32, 48;
-    --bg-ticker: #263848;
-    --bg-card: #1E2E40;
-    --bg-form: #1E2E40;
-    --bg-input: #263848;
-    --bg-footer: #1E2E40;
-    --bg-name-highlight: #3A6E9E;
-    --bg-btn-primary: #3A6E9E;
-    --accent-tag: #5B8DB8;
-    --accent-base-rgb: 58, 110, 158;
+    /* =========================================
+       DEEP OCEAN (BLUEISH) - DARK MODE
+       ========================================= */
+    --bg-page: #000814;
+    --bg-nav: #001122;
+    --bg-nav-rgb: 0, 17, 34;
+    --bg-ticker: #001A33;
+    --bg-card: #001122;
+    --bg-form: #001122;
+    --bg-input: #002244;
+    --bg-footer: #000C1A;
+    --bg-name-highlight: #0088FF;
+    --bg-btn-primary: #0088FF;
     
-    --text-primary: #E8F2FA;
-    --text-secondary: #A8C4DC;
-    --text-muted: #4A6B8A;
-    --text-ticker: #A8C4DC;
-    --text-footer: #A8C4DC;
-    --text-btn-primary: #E8F2FA;
-    --text-name: #0D1824;
+    --accent-base: #0088FF; /* Vibrant Blue */
+    --accent-base-rgb: 0, 136, 255;
+    --accent-tag: #0088FF;
+    --accent-tint: #0044CC; /* Electric Blue */
+    --accent-strong: #00FFFF; /* Cyan */
+    --accent-hilite: #0088FF;
+    --accent-text: #000814;
+    --accent-dark: #FFFFFF;
     
-    --border-nav: #263848;
-    --border-card: #263848;
-    --border-input: #263848;
-    --border-footer-top: #3A6E9E;
-    --divider-dashed: #3A6E9E;
-
-    /* --- PIN PAD SPECIFIC (DARK) --- */
-    --pin-bg: #3A6E9E;
-    --pin-key-bg: #1E2E40;
-    --pin-clear-bg: #1A3A56;
-    --pin-delete-bg: #1E2E40;
-    --pin-display-bg: #152030;
-    --pin-label-text: var(--text-name);
-    --pin-key-text: #E8F2FA;
-    --pin-clear-text: #A8C4DC;
-    --pin-delete-text: #A8C4DC;
-    --pin-dot-empty: #263848;
-    --pin-dot-filled: #5B8DB8;
-    --pin-border: #0D1824;
-
-    /* Semantic Tokens (Dark Mode Overrides) */
-    --accent-tint: #1A3A56;
-    --accent-base: #3A6E9E;
-    --accent-strong: #3A6E9E;
-    --accent-hilite: #5B8DB8;
-    --accent-text: #A8C4DC;
-
-    /* Functional Mappings Override */
-    --theme-bg: var(--bg-page);
-    --theme-surface: #152030;
-    --theme-card: var(--bg-card);
-    --theme-raised: var(--bg-input);
-
-    --theme-active: var(--bg-btn-primary);
-    --theme-hover: #263848;
-    --theme-accent-bg: var(--accent-tint);
-    --theme-accent-text: var(--accent-text);
+    --text-primary: #E6F2FF;
+    --text-secondary: #99C2FF;
+    --text-muted: #4D94FF;
+    --text-ticker: #E6F2FF;
+    --text-footer: #99C2FF;
+    --text-btn-primary: #000814;
+    --text-name: #E6F2FF;
     
+    --border-nav: #003366;
+    --border-card: #003366;
+    --border-input: #003366;
+    --border-footer-top: #003366;
+    --divider-dashed: #003366;
+
     /* Base Logic Mapping Override */
     --bg-color: var(--bg-page);
     --text-color: var(--text-primary);
-    --border-color: var(--text-primary);
+    --border-color: var(--border-card);
     --white: var(--bg-nav);
     --gray: var(--bg-card);
 
-    /* --- MISSING VARIABLES (DARK) --- */
     --home-tag-bg: var(--accent-hilite);
     --home-name-text: var(--bg-page);
+    
+    /* Functional Themes Override */
+    --theme-bg: var(--bg-page);
+    --theme-surface: #001122;
+    --theme-card: var(--bg-card);
+    --theme-raised: var(--bg-input);
+    --theme-active: var(--bg-btn-primary);
+    --theme-hover: #002244;
+    --theme-accent-bg: var(--accent-tint);
+    --theme-accent-text: var(--accent-text);
 }
 
 [data-theme="dark"] .black-bg {
@@ -484,27 +451,188 @@ main > section:not(:last-child) {
 }
 
 /* ------------- HERO ------------- */
-.hero {
+
+/* --- BRUTALIST HERO OVERHAUL --- */
+.brutal-hero {
     position: relative;
-    min-height: 80vh;
+    min-height: 100vh;
     display: flex;
-    align-items: flex-start;
+    align-items: flex-start; /* Changed from center to allow margin-top to work */
     justify-content: center;
     overflow: hidden;
-    background: var(--bg-page);
-    padding-top: 0;
+}
+
+/* Diagonal Marquee Background */
+.brutal-marquee-container {
+    position: absolute;
+    top: 50%;
+    left: -10%;
+    width: 120%;
+    transform: translateY(-50%) rotate(-10deg);
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 0.15;
+}
+
+.brutal-marquee-track {
+    display: inline-block;
+    animation: brutalScroll 20s linear infinite;
+}
+
+.brutal-marquee-track span {
+    font-family: 'Anton', sans-serif;
+    font-size: 15vw;
+    color: transparent;
+    -webkit-text-stroke: 4px var(--text-primary);
+    line-height: 1;
+    padding-right: 2rem;
+}
+
+@keyframes brutalScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* Massive Typographic Name Layer */
+.brutal-name-layer {
+    position: absolute;
+    top: 10%;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 2; /* Move behind the interactive bento boxes */
+    pointer-events: none; /* Let clicks pass through to the bento grid */
+}
+
+.brutal-name-text {
+    font-family: 'Anton', sans-serif;
+    font-size: 15vw;
+    line-height: 0.9;
+    color: var(--text-primary);
+    text-shadow: 8px 8px 0px var(--bg-page), 12px 12px 0px var(--accent-base);
+    margin: 0;
+    text-transform: uppercase;
+}
+
+/* The Box Layer (Hybrid Merge) */
+.brutal-split {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 90%;
+    max-width: 1400px;
+    margin: 45vh auto 0 auto; /* Push down to reveal the ARMAAN text */
+    gap: 2rem;
+}
+
+.brutal-text-box {
+    flex: 1; /* Balance with the profile picture column */
+    padding: 2rem;
+    background-color: var(--yellow); /* Acid Yellow popping against the black */
+    color: #050505 !important;
+}
+
+.brutal-text-box p {
+    color: #050505;
+    font-weight: 600;
+}
+
+.brutal-profile {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.brutal-img {
+    filter: grayscale(100%) contrast(1.2); /* Grayscale to fit brutalism */
+    transition: filter 0.3s ease;
+}
+
+.brutal-img:hover {
+    filter: grayscale(0%) contrast(1); /* Color on hover */
+}
+
+.brutal-badge {
+    background-color: var(--blue);
+    color: #050505;
+    border-color: #050505;
+}
+
+/* Responsive media queries for Hybrid Brutalism Hero */
+@media (max-width: 900px) {
+    .brutal-split {
+        flex-direction: column-reverse; /* Profile on top, text box below */
+        align-items: center;
+        margin-top: 32vh;
+        gap: 2.5rem;
+        width: 95%;
+    }
+    
+    .brutal-text-box {
+        width: 100%;
+        max-width: 650px;
+        padding: 1.5rem;
+    }
+    
+    .brutal-profile {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .brutal-name-layer {
+        top: 8%;
+    }
+    
+    .brutal-name-text {
+        font-size: 18vw;
+        text-shadow: 4px 4px 0px var(--bg-page), 7px 7px 0px var(--accent-base);
+    }
+    
+    .brutal-marquee-container {
+        top: 45%;
+    }
+    
+    .brutal-marquee-track span {
+        font-size: 10vw;
+        -webkit-text-stroke: 2px var(--text-primary);
+    }
+    
+    .brutal-split {
+        margin-top: 25vh;
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .brutal-name-text {
+        font-size: 20vw;
+        text-shadow: 3px 3px 0px var(--bg-page), 5px 5px 0px var(--accent-base);
+    }
+    
+    .brutal-marquee-track span {
+        font-size: 12vw;
+        -webkit-text-stroke: 1.5px var(--text-primary);
+    }
+    
+    .brutal-split {
+        margin-top: 22vh;
+        gap: 1.5rem;
+    }
+    
+    .brutal-text-box {
+        padding: 1.25rem 1rem;
+    }
 }
 
 .hero-bg-glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80vw;
-    height: 80vh;
-    background: radial-gradient(circle, rgba(var(--bg-nav-rgb), 0.1) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 1;
+    display: none;
 }
 
 .hero-content-split {
@@ -1307,16 +1435,7 @@ main > section:not(:last-child) {
 
 /* --- Modern Cyber Mesh Background --- */
 body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: 
-        linear-gradient(var(--text-muted) 1px, transparent 1px),
-        linear-gradient(90deg, var(--text-muted) 1px, transparent 1px);
-    background-size: 32px 32px;
-    opacity: 0.12;
+    display: none;
 }
 
 [data-theme="dark"] body::after {
@@ -1387,7 +1506,7 @@ body::after {
 
 /* --- Premium "See My Work" Enhancements --- */
 .btn-work {
-    background: linear-gradient(135deg, var(--bg-btn-primary) 0%, var(--accent-strong) 100%);
+    background: var(--bg-btn-primary);
     position: relative;
     letter-spacing: 0.02em;
 }
@@ -1402,21 +1521,7 @@ body::after {
 }
 
 .btn-work::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.2),
-        transparent
-    );
-    transform: skewX(-25deg);
-    transition: none;
-    pointer-events: none;
+    display: none;
 }
 
 .btn-work:hover::after {
@@ -1429,7 +1534,7 @@ body::after {
 }
 
 [data-theme="dark"] .btn-work {
-    background: linear-gradient(135deg, var(--accent-base) 0%, var(--accent-strong) 100%);
+    background: var(--accent-base);
     box-shadow: 4px 4px 0px 0px var(--border-card),
                 0 0 20px -5px var(--accent-base);
 }
@@ -1512,7 +1617,7 @@ body::after {
     left: 0;
     height: 3px;
     width: 0%;
-    background: linear-gradient(90deg, var(--accent-base), var(--accent-strong));
+    background: var(--accent-base);
     z-index: 100001;
     transition: width 0.05s linear;
     border-radius: 0 2px 2px 0;
@@ -1539,35 +1644,11 @@ body::after {
 
 /* --- 5. Animated Glint Sweep on Highlight Text --- */
 .highlight::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-        105deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0) 35%,
-        rgba(255, 255, 255, 0.35) 50%,
-        rgba(255, 255, 255, 0) 65%,
-        transparent 100%
-    );
-    z-index: 2;
-    animation: glintSweep 3.5s ease-in-out infinite;
-    pointer-events: none;
-    border-radius: inherit;
+    display: none;
 }
 
 [data-theme="dark"] .highlight::before {
-    background: linear-gradient(
-        105deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0) 35%,
-        rgba(255, 255, 255, 0.18) 50%,
-        rgba(255, 255, 255, 0) 65%,
-        transparent 100%
-    );
+    display: none;
 }
 
 .highlight::after {
@@ -1635,20 +1716,7 @@ main {
 }
 
 .project-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        135deg,
-        var(--accent-tint) 0%,
-        transparent 40%,
-        transparent 60%,
-        var(--accent-tint) 100%
-    );
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-    z-index: 0;
+    display: none;
 }
 
 .project-card:hover::before {
@@ -1834,7 +1902,7 @@ main {
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
     .bento-grid-system {
         grid-template-columns: 1fr !important;
     }
@@ -2039,3 +2107,37 @@ main {
     100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
 }
 
+/* --- Dynamic Background Doodles --- */
+#doodle-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none; /* Let clicks pass through to main content */
+    overflow: hidden;
+}
+
+.brutal-doodle {
+    position: absolute;
+    pointer-events: auto; /* Allow hover interaction on the individual doodles */
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), stroke 0.3s ease;
+}
+
+.brutal-doodle:hover {
+    transform: scale(1.5) rotate(15deg) !important;
+    stroke: var(--accent-base) !important;
+    cursor: crosshair;
+    z-index: 10;
+}
+
+/* --- Dynamic Dotted Grid Background --- */
+#dynamic-bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2; /* Behind the doodles and everything else */
+    pointer-events: none;
+}

@@ -956,5 +956,202 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     })();
 
+    // =============================================
+    // FEATURE 13: DYNAMIC BACKGROUND DOODLES
+    // =============================================
+    (function() {
+        const container = document.getElementById('doodle-container');
+        if (!container) return;
+
+        const NS = 'http://www.w3.org/2000/svg';
+        const NUM_DOODLES = 25;
+        
+        // Random helpers
+        const r = (min, max) => Math.random() * (max - min) + min;
+        const randColor = () => {
+            const colors = ['var(--accent-tint)', 'var(--text-muted)', 'var(--border-color)', 'var(--yellow)', 'var(--blue)'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        };
+
+        const createSVG = (w, h, pathD) => {
+            const svg = document.createElementNS(NS, 'svg');
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            svg.setAttribute('width', `${w}px`);
+            svg.setAttribute('height', `${h}px`);
+            svg.classList.add('brutal-doodle');
+            
+            // Random positioning & styling across multiple viewports of scrolling
+            const left = r(2, 95);
+            const top = r(2, 350); // Spread doodles down the page (3.5 screen heights)
+            svg.style.left = `${left}vw`;
+            svg.style.top = `${top}vh`;
+            
+            // Initial transform vars for animation/hover
+            const rot = r(0, 360);
+            const scl = r(0.6, 1.4);
+            const baseTransform = `rotate(${rot}deg) scale(${scl})`;
+            
+            svg.style.transform = baseTransform;
+            
+            const baseOpacity = r(0.15, 0.4);
+            svg.style.opacity = baseOpacity;
+
+            const path = document.createElementNS(NS, 'path');
+            path.setAttribute('d', pathD);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', randColor());
+            path.setAttribute('stroke-width', r(1.5, 4));
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            
+            svg.appendChild(path);
+
+            // Fast, Random Animation using Web Animations API
+            const anim = svg.animate([
+                { transform: `translate(0px, 0px) rotate(${rot}deg) scale(${scl})` },
+                { transform: `translate(${r(-80, 80)}px, ${r(-80, 80)}px) rotate(${rot + r(-45, 45)}deg) scale(${scl})` },
+                { transform: `translate(${r(-80, 80)}px, ${r(-80, 80)}px) rotate(${rot + r(-45, 45)}deg) scale(${scl})` },
+                { transform: `translate(0px, 0px) rotate(${rot}deg) scale(${scl})` }
+            ], {
+                duration: r(3000, 7000), // Faster: 3s to 7s
+                iterations: Infinity,
+                easing: 'ease-in-out'
+            });
+            
+            // Interactive hover logic (using JS alongside CSS)
+            svg.addEventListener('mouseenter', () => {
+                anim.pause();
+                svg.style.opacity = '1';
+                svg.style.transform = `rotate(${rot + 45}deg) scale(${scl * 1.5})`;
+            });
+            svg.addEventListener('mouseleave', () => {
+                svg.style.opacity = baseOpacity;
+                svg.style.transform = baseTransform; // Note: transition in CSS handles smooth return
+                anim.play();
+            });
+
+
+            return svg;
+        };
+
+        const generators = [
+            // The Cross (+)
+            () => createSVG(40, 40, `M10,20 L30,20 M20,10 L20,30`),
+            // The Star (*)
+            () => createSVG(50, 50, `M25,5 L25,45 M5,25 L45,25 M12,12 L38,38 M12,38 L38,12`),
+            // The Squiggle
+            () => {
+                let d = `M${r(5,15)},${r(5,15)} `;
+                for(let i=0; i<3; i++) {
+                    d += `C${r(10,40)},${r(10,40)} ${r(10,40)},${r(10,40)} ${r(30,45)},${r(30,45)} `;
+                }
+                return createSVG(50, 50, d);
+            },
+            // The Rough Circle
+            () => {
+                let rx = r(15,22), ry = r(15,22);
+                let cx = 25, cy = 25;
+                // Cubic bezier approximation of a circle with some offset
+                return createSVG(50, 50, `M${cx},${cy-ry} C${cx+rx*1.5},${cy-ry} ${cx+rx},${cy+ry*1.2} ${cx},${cy+ry} C${cx-rx},${cy+ry} ${cx-rx*1.2},${cy-ry*0.8} ${cx},${cy-ry}`);
+            },
+            // Double Line
+            () => createSVG(40, 40, `M5,15 L35,10 M5,25 L35,20`)
+        ];
+
+        for (let i = 0; i < NUM_DOODLES; i++) {
+            const gen = generators[Math.floor(Math.random() * generators.length)];
+            container.appendChild(gen());
+        }
+    })();
+
+    // =============================================
+    // FEATURE 14: DYNAMIC DOTTED GRID BACKGROUND
+    // =============================================
+    (function() {
+        const canvas = document.getElementById('dynamic-bg-grid');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        
+        let width, height;
+        const spacing = 45; // Space between dots
+        const radius = 1.5; // Default dot radius
+        const interactionRadius = 150; // Mouse interaction distance
+        
+        let mouseX = -1000;
+        let mouseY = -1000;
+
+        const resize = () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        };
+        
+        window.addEventListener('resize', resize);
+        resize();
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseout', () => {
+            mouseX = -1000;
+            mouseY = -1000;
+        });
+
+        const getColors = () => {
+            const style = getComputedStyle(document.body);
+            const dotColor = style.getPropertyValue('--text-muted').trim() || '#4D79FF';
+            const highlightColor = style.getPropertyValue('--accent-base').trim() || '#0044CC';
+            return { dotColor, highlightColor };
+        };
+
+        const render = () => {
+            ctx.clearRect(0, 0, width, height);
+            const { dotColor, highlightColor } = getColors();
+
+            for (let x = spacing / 2; x < width; x += spacing) {
+                for (let y = spacing / 2; y < height; y += spacing) {
+                    let dx = mouseX - x;
+                    let dy = mouseY - y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    let drawX = x;
+                    let drawY = y;
+                    let drawRadius = radius;
+                    let currentFill = dotColor;
+                    let opacity = 0.25; // Base low opacity for the grid
+
+                    if (dist < interactionRadius) {
+                        const force = (interactionRadius - dist) / interactionRadius; // 0 to 1
+                        
+                        // Push dot away from mouse
+                        const pushForce = force * 12;
+                        if (dist > 0) {
+                            drawX -= (dx / dist) * pushForce;
+                            drawY -= (dy / dist) * pushForce;
+                        }
+                        
+                        // Grow dot and shift color
+                        drawRadius = radius + (force * 2.5);
+                        opacity = 0.25 + (force * 0.75); // Scales to 1.0
+                        currentFill = highlightColor;
+                    }
+
+                    ctx.globalAlpha = opacity;
+                    ctx.fillStyle = currentFill;
+                    ctx.beginPath();
+                    ctx.arc(drawX, drawY, drawRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(render);
+        };
+
+        render();
+    })();
+
     // Glitch Mode — Removed
 });
