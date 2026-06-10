@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYS.ERR // 404 // ARMAAN AHMAD ANSARI</title>
+    <meta name="description" content="Page not found.">
+    
+    <!-- Google Fonts: Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Google Fonts: Anton for Typographic Brutalism -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='30' fill='%230D1824'/%3E%3Cpath fill='%235B8DB8' d='M50 20 L58 42 L80 50 L58 58 L50 80 L42 58 L20 50 L42 42 Z'/%3E%3C/svg%3E">
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #0D1824; /* Base dark terminal color */
+            color: var(--text-primary);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 4rem;
+            border: 4px solid var(--text-primary);
+            background-color: #111;
+            box-shadow: 15px 15px 0px 0px var(--accent-base);
+            max-width: 90%;
+            position: relative;
+        }
+
+        .error-code {
+            font-family: 'Anton', 'Space Grotesk', sans-serif;
+            font-size: clamp(6rem, 15vw, 12rem);
+            line-height: 1;
+            margin-bottom: 1rem;
+            color: var(--accent-base);
+            text-shadow: 4px 4px 0px #111;
+        }
+
+        .error-msg {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 3rem;
+            text-transform: uppercase;
+        }
+
+        .error-msg::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .reboot-btn {
+            display: inline-block;
+            background-color: var(--text-primary);
+            color: #111;
+            padding: 1.2rem 3rem;
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            text-transform: uppercase;
+            border: 3px solid var(--text-primary);
+            transition: all 0.2s ease;
+            box-shadow: 6px 6px 0px 0px #111;
+        }
+
+        .reboot-btn:hover {
+            background-color: var(--accent-base);
+            color: #111;
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0px 0px #111;
+        }
+
+        /* Glitch overlay line */
+        .glitch-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-base);
+            opacity: 0.5;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Custom Cursor -->
+    <div class="custom-cursor"></div>
+
+    <!-- Dynamic Dotted Grid Background -->
+    <canvas id="dynamic-bg-grid" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:-1;"></canvas>
+
+    <div class="error-container">
+        <div class="glitch-line"></div>
+        <div class="error-code">404</div>
+        <div class="error-msg">SYS.ERR // PAGE_NOT_FOUND</div>
+        <a href="/mysite/" class="reboot-btn">[ INITIATE SYSTEM REBOOT ]</a>
+    </div>
+
+    <!-- Load scripts for cursor and canvas background -->
+    <script src="script.js"></script>
+</body>
+
+</html>

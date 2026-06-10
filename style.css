@@ -139,6 +139,12 @@ html {
     box-sizing: border-box;
 }
 
+:focus-visible {
+    outline: 3px solid var(--accent-base);
+    outline-offset: 4px;
+    border-radius: 2px;
+}
+
 body {
     font-family: 'Space Grotesk', sans-serif;
     background-color: var(--bg-color);
