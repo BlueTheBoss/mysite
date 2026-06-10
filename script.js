@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const scrollTop = window.scrollY;
         const docHeight = document.documentElement.scrollHeight - window.innerHeight;
         const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-        scrollProgress.style.width = scrollPercent + '%';
+        scrollProgress.style.setProperty('--scroll-pct', scrollPercent + '%');
     };
 
     // =============================================
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================
     // 4. ACTIVE NAV LINK HIGHLIGHT
     // =============================================
-    const navSectionLinks = document.querySelectorAll('.nav-links a[data-section]');
+    const navSectionLinks = document.querySelectorAll('.spine-tab[data-section]');
     const sections = document.querySelectorAll('section[id]');
     const updateActiveNav = () => {
         let currentSection = '';
@@ -306,7 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         navSectionLinks.forEach(link => {
-            link.classList.toggle('active-section', link.dataset.section === currentSection);
+            if (link.dataset.section === currentSection) {
+                link.classList.add('active-section');
+            } else {
+                link.classList.remove('active-section');
+            }
         });
     };
 
@@ -323,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================
     // 5. SCROLL REVEAL (with blur)
     // =============================================
-    const revealElements = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+    const revealElements = document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-monolith');
     const revealObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -1151,6 +1155,183 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         render();
+    })();
+
+    // =============================================
+    // FEATURE 15: TERMINAL "NEOFETCH" CARD
+    // =============================================
+    (function() {
+        const terminalCard = document.getElementById('arch-terminal');
+        const cmdEl = document.querySelector('.type-cmd');
+        const outputEl = document.getElementById('arch-output');
+        const prompt2El = document.getElementById('arch-prompt-2');
+
+        if (!terminalCard || !cmdEl || !outputEl || !prompt2El) return;
+
+        const cmdText = "./status.sh";
+        const outputText = `OS: Arch Linux x86_64
+Host: Armaan's Brain
+Kernel: 100% Caffeine
+Uptime: 24/7
+Packages: 1337 (pacman)
+Shell: zsh
+WM: Hyprland
+Theme: Hybrid Brutalism
+
+> Minimalist, rolling release, and perfectly
+> broken when I need a challenge.`;
+
+        let typingStarted = false;
+
+        const startTyping = () => {
+            cmdEl.textContent = '';
+            let i = 0;
+            const typeInterval = setInterval(() => {
+                cmdEl.textContent += cmdText[i];
+                i++;
+                if (i === cmdText.length) {
+                    clearInterval(typeInterval);
+                    setTimeout(showOutput, 400);
+                }
+            }, 80); // Fast typing
+        };
+
+        const showOutput = () => {
+            outputEl.textContent = outputText;
+            prompt2El.classList.remove('hidden-prompt');
+        };
+
+        // Use IntersectionObserver to trigger when scrolled into view
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !typingStarted) {
+                typingStarted = true;
+                cmdEl.textContent = ''; // clear initially
+                setTimeout(startTyping, 600);
+            }
+        }, { threshold: 0.5 });
+
+        // Ensure it's clear initially before observing
+        cmdEl.textContent = '';
+        observer.observe(terminalCard);
+    })();
+
+    // =============================================
+    // FEATURE 16: LIVE GITHUB STATS
+    // =============================================
+    (function() {
+        const titleEl = document.getElementById('github-langs-title');
+        const statsEl = document.getElementById('github-stats');
+        
+        if (!titleEl || !statsEl) return;
+
+        const GITHUB_USERNAME = 'BlueTheBoss';
+        
+        fetch(`https://api.github.com/users/${GITHUB_USERNAME}/repos?sort=updated&per_page=100`)
+            .then(res => {
+                if (!res.ok) throw new Error('API Rate Limit or Error');
+                return res.json();
+            })
+            .then(repos => {
+                const langCounts = {};
+                let totalRepos = 0;
+                
+                repos.forEach(repo => {
+                    if (repo.language && !repo.fork) {
+                        langCounts[repo.language] = (langCounts[repo.language] || 0) + 1;
+                        totalRepos++;
+                    }
+                });
+
+                const sortedLangs = Object.entries(langCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3); // Top 3
+
+                if (sortedLangs.length >= 2) {
+                    titleEl.textContent = `${sortedLangs[0][0]} & ${sortedLangs[1][0]}`;
+                } else if (sortedLangs.length === 1) {
+                    titleEl.textContent = sortedLangs[0][0];
+                }
+
+                let statsHtml = '';
+                sortedLangs.forEach(([lang, count]) => {
+                    const percentage = Math.round((count / totalRepos) * 100);
+                    let bar = '█'.repeat(Math.ceil(percentage / 10));
+                    bar += '░'.repeat(10 - Math.ceil(percentage / 10));
+                    statsHtml += `<div>${lang.padEnd(10, ' ')} ${bar} ${percentage}%</div>`;
+                });
+
+                statsEl.innerHTML = statsHtml || '<div>No language data found.</div>';
+            })
+            .catch(err => {
+                titleEl.textContent = "Java & Python";
+                statsEl.innerHTML = "<div>Error connecting to GitHub.</div>";
+            });
+    })();
+
+    // =============================================
+    // FEATURE 17: FILING CABINET ACCORDION
+    // =============================================
+    (function() {
+        const folders = document.querySelectorAll('.folder-item');
+        if (!folders.length) return;
+
+        folders.forEach(folder => {
+            const tab = folder.querySelector('.folder-tab');
+            const content = folder.querySelector('.folder-content');
+
+            tab.addEventListener('click', () => {
+                const isActive = folder.classList.contains('active');
+                
+                // Close all folders
+                folders.forEach(f => {
+                    f.classList.remove('active');
+                    f.querySelector('.folder-content').style.maxHeight = null;
+                });
+
+                // If it wasn't active before, open it
+                if (!isActive) {
+                    folder.classList.add('active');
+                    content.style.maxHeight = content.scrollHeight + "px";
+                }
+            });
+        });
+    })();
+
+    // =============================================
+    // FEATURE 18: LIVE SERVER UPTIME CLOCK
+    // =============================================
+    (function() {
+        const uptimeEl = document.getElementById('server-uptime');
+        if (!uptimeEl) return;
+
+        // Simulate a long-running server uptime (e.g. 42 days, 13 hours, X minutes, X seconds)
+        let days = 42;
+        let hours = 13;
+        let minutes = 45;
+        let seconds = 12;
+
+        setInterval(() => {
+            seconds++;
+            if (seconds >= 60) {
+                seconds = 0;
+                minutes++;
+            }
+            if (minutes >= 60) {
+                minutes = 0;
+                hours++;
+            }
+            if (hours >= 24) {
+                hours = 0;
+                days++;
+            }
+
+            const d = String(days).padStart(2, '0');
+            const h = String(hours).padStart(2, '0');
+            const m = String(minutes).padStart(2, '0');
+            const s = String(seconds).padStart(2, '0');
+
+            uptimeEl.textContent = `${d}:${h}:${m}:${s}`;
+        }, 1000);
     })();
 
     // Glitch Mode — Removed
