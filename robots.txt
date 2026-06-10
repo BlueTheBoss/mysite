@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://bluetheboss.github.io/mysite/sitemap.xml
+Sitemap: https://armevox.vercel.app/sitemap.xml
