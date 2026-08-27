@@ -1,16 +1,199 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
+import { listVaultDir, FILES_DIR, type VaultEntry } from '../../lib/vault';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
+
+const wantFresh = Astro.url.searchParams.has('fresh');
+let files: VaultEntry[] = [];
+let storageError: string | null = null;
+try {
+    files = (await listVaultDir(FILES_DIR, { fresh: wantFresh }))
+        .filter(e => e.size !== null) // directories (none expected) have no size
+        .sort((a, b) => (b.server_modified || '').localeCompare(a.server_modified || ''));
+} catch (err: any) {
+    storageError = err.message;
+}
+
+const fmtSize = (bytes: number | null): string => {
+    if (bytes === null) return '—';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let v = bytes;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`;
+};
+const fmtDate = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
 ---
 
 <VaultLayout title="Files" active="files" expiresAt={auth.expiresAt}>
-    <div class="vault-empty">
-        <p>[ FILE MODULE :: STANDBY ]</p>
-        <p>private storage comes online in phase 6 — dropbox/files/</p>
-    </div>
+    {storageError ? (
+        <div class="vault-empty">
+            <p>[ STORAGE OFFLINE ]</p>
+            <p>{storageError}</p>
+        </div>
+    ) : (
+        <>
+            <div class="vault-status">
+                <div class="vault-stat">
+                    <span class="k">[ OBJECTS ]</span>
+                    <span class="v">{files.length}</span>
+                </div>
+                <div class="vault-stat">
+                    <span class="k">[ TOTAL SIZE ]</span>
+                    <span class="v">{fmtSize(totalBytes)}</span>
+                </div>
+            </div>
+
+            <!-- Upload -->
+            <form id="upload-form" class="vault-form" style="margin-bottom: 2rem;">
+                <input type="file" id="file-input" class="vault-input" required />
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <button type="submit" class="vault-btn" id="upload-btn">[ ⇧ UPLOAD ]</button>
+                    <span id="upload-progress" class="vr-meta"></span>
+                </div>
+            </form>
+
+            {files.length === 0 ? (
+                <div class="vault-empty">
+                    <p>[ EMPTY DIRECTORY :: 0 OBJECTS ]</p>
+                    <p>upload something private</p>
+                </div>
+            ) : (
+                <div class="vault-list">
+                    {files.map(f => (
+                        <div class="vault-row" data-name={f.name}>
+                            <div class="vr-main">
+                                <div class="vr-title">{f.name}</div>
+                                <div class="vr-meta">
+                                    {fmtSize(f.size)} · modified {fmtDate(f.server_modified)}
+                                </div>
+                            </div>
+                            <div class="vr-actions">
+                                <button class="vault-btn ghost dl-btn" data-name={f.name} type="button">[ ⇩ GET ]</button>
+                                <button class="vault-btn danger del-btn" data-name={f.name} type="button">[ ✕ ]</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div style="margin-top: 1.5rem;">
+                <a href="/vault/files?fresh=1" class="vault-btn ghost">[ $ ls --fresh ]</a>
+            </div>
+        </>
+    )}
+
+    <script>
+        const CHUNK_SIZE = 4 * 1024 * 1024; // stays under the 4.5 MB function body limit
+
+        const setProgress = (msg: string) => {
+            const el = document.getElementById('upload-progress');
+            if (el) el.textContent = msg;
+        };
+
+        const jsonOrThrow = async (res: Response) => {
+            const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            return data;
+        };
+
+        // ---- Upload (chunked) ----
+        document.getElementById('upload-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('file-input') as HTMLInputElement;
+            const btn = document.getElementById('upload-btn') as HTMLButtonElement;
+            const file = input.files?.[0];
+            if (!file) return;
+
+            btn.disabled = true;
+            try {
+                const start = await jsonOrThrow(await fetch('/api/vault/files/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: file.name, size: file.size }),
+                }));
+
+                const appended = file.size === 0 ? 0 : await (async () => {
+                    let offset = 0;
+                    const lastChunkStart = Math.max(0, Math.floor((file.size - 1) / CHUNK_SIZE) * CHUNK_SIZE);
+                    while (offset < lastChunkStart) {
+                        const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
+                        await jsonOrThrow(await fetch(
+                            `/api/vault/files/append?session=${encodeURIComponent(start.sessionId)}&offset=${offset}`,
+                            { method: 'POST', body: chunk }
+                        ));
+                        offset += chunk.byteLength;
+                        setProgress(`UPLOADING ${Math.round((offset / file.size) * 100)}%`);
+                    }
+                    return offset;
+                })();
+
+                setProgress('COMMITTING…');
+                const finalChunk = file.size === 0
+                    ? null
+                    : await file.slice(appended, file.size).arrayBuffer();
+                const finishUrl = `/api/vault/files/finish?session=${encodeURIComponent(start.sessionId)}` +
+                    `&offset=${appended}&name=${encodeURIComponent(start.name)}` +
+                    `${finalChunk ? '&hasFinal=1' : ''}`;
+                await jsonOrThrow(await fetch(finishUrl, {
+                    method: 'POST',
+                    ...(finalChunk ? { body: finalChunk } : {}),
+                }));
+
+                setProgress('DONE');
+                window.location.reload();
+            } catch (err: any) {
+                (window as any).__vaultToast(`Upload failed: ${err.message}`, 'error');
+                setProgress('');
+                btn.disabled = false;
+            }
+        });
+
+        // ---- Download via short-lived link (anchor click, popup-safe) ----
+        document.querySelectorAll('.dl-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const name = (e.currentTarget as HTMLElement).dataset.name;
+                if (!name) return;
+                try {
+                    const { url } = await jsonOrThrow(
+                        await fetch(`/api/vault/files/link?name=${encodeURIComponent(name)}`)
+                    );
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name;
+                    a.rel = 'noopener';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } catch (err: any) {
+                    (window as any).__vaultToast(err.message, 'error');
+                }
+            });
+        });
+
+        // ---- Delete ----
+        document.querySelectorAll('.del-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const name = (e.currentTarget as HTMLElement).dataset.name;
+                if (!name || !confirm(`Delete "${name}"? This cannot be undone.`)) return;
+                try {
+                    await jsonOrThrow(await fetch('/api/vault/files/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name }),
+                    }));
+                    window.location.reload();
+                } catch (err: any) {
+                    (window as any).__vaultToast(err.message, 'error');
+                }
+            });
+        });
+    </script>
 </VaultLayout>
