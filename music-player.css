@@ -407,7 +407,7 @@
 }
 
 .playlist-card-header h2, .pl-count {
-    color: #FFF !important;
+    color: var(--text-primary);
 }
 
 [data-theme="dark"] .playlist-card-header {

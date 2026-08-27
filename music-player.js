@@ -1,32 +1,22 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
-    // ---- Security Check (Persistent Cookies) ----
-    const getCookie = (name) => {
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for(let i=0;i < ca.length;i++) {
-            let c = ca[i];
-            while (c.charAt(0)==' ') c = c.substring(1,c.length);
-            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    // ---- Security Check (HttpOnly session cookie, verified server-side) ----
+    try {
+        const sessionResp = await fetch('/api/session');
+        const { authenticated } = await sessionResp.json();
+        if (!authenticated) {
+            window.location.href = '/'; // Go to homepage/PIN entry
+            return;
         }
-        return null;
-    };
-
-    const setCookie = (name, value, days) => {
-        let expires = "";
-        if (days) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            expires = "; expires=" + date.toUTCString();
-        }
-        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict";
-    };
-
-    const authPin = getCookie('music_auth');
-    if (!authPin) {
-        window.location.href = '/'; // Go to homepage/PIN entry
+    } catch {
+        window.location.href = '/';
         return;
     }
+
+    // ---- XSS guard for metadata coming back from the API ----
+    const escapeHtml = (s) => String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
     // ---- Elements ----
     const audio         = document.getElementById('audio-player');
@@ -61,22 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let shuffle = false;
     let repeat  = 0; // 0: off, 1: playlist, 2: track
     const durs  = {};
+    const prefetched = new Set(); // track indexes whose next-stream was warmed
 
     // =============================================
     // INITIAL LOAD FROM DROPBOX API
     // =============================================
-    const fetchTracks = async () => {
+    const fetchTracks = async (forceRefresh = false) => {
         trackTitle.textContent = "Authenticating...";
         trackArtist.textContent = "Checking secure session...";
-        
+
         try {
-            const resp = await fetch('/api/music', {
-                headers: { 'x-session-token': authPin }
-            });
-            
+            const resp = await fetch(`/api/music${forceRefresh ? '?refresh=true' : ''}`);
+
             if (resp.status === 401) {
-                // Invalid or expired PIN (likely changed server-side)
-                setCookie('music_auth', '', -1); // Clear cookie
+                // Invalid or expired session (PIN likely changed server-side)
                 window.location.href = '/';
                 return;
             }
@@ -238,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
             li.innerHTML = `
                 <span class="pl-num">${String(i + 1).padStart(2, '0')}</span>
                 <div class="pl-meta">
-                    <div class="pl-title">${t.title}</div>
-                    <div class="pl-artist">${t.artist}</div>
+                    <div class="pl-title">${escapeHtml(t.title)}</div>
+                    <div class="pl-artist">${escapeHtml(t.artist)}</div>
                 </div>
                 <span class="pl-dur" id="pl-dur-${i}">${durs[i] ? fmt(durs[i]) : '--:--'}</span>
                 <div class="pl-bars">
@@ -261,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 artist: track.artist,
                 album: 'VibePlayer',
                 artwork: [
-                    { src: 'https://img.icons8.com/color/512/music-record.png', sizes: '512x512', type: 'image/png' }
+                    { src: 'assets/vibeplayer-art.png', sizes: '512x512', type: 'image/png' }
                 ]
             });
 
@@ -400,12 +388,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     audio.addEventListener('ended', () => playNext(true));
 
+    // ---- Stream error recovery ----
+    // Stream URLs are temporary (they expire after a few hours). If playback
+    // dies mid-session, silently refresh the playlist once and resume.
+    let recovering = false;
+    audio.addEventListener('error', async () => {
+        if (recovering || !tracks.length) return;
+        recovering = true;
+        try {
+            trackArtist.textContent = 'Reconnecting to stream...';
+            const oldIdx = idx;
+            const wasPlaying = playing;
+            await fetchTracks(true);
+            if (tracks.length) {
+                load(Math.min(oldIdx, tracks.length - 1));
+                if (wasPlaying) play();
+            }
+        } finally {
+            setTimeout(() => { recovering = false; }, 5000);
+        }
+    });
+
     // ---- Time sync ----
     audio.addEventListener('timeupdate', () => {
         if (seeking || !audio.duration) return;
         const pct = (audio.currentTime / audio.duration) * 100;
         setProgress(pct);
         currentTimeEl.textContent = fmt(audio.currentTime);
+
+        // Prefetch the next track's metadata near the end of this one,
+        // so hitting "next" (or auto-advance) starts instantly.
+        if (pct > 75 && tracks.length > 1 && !prefetched.has(idx)) {
+            prefetched.add(idx);
+            const nextIdx = shuffle
+                ? Math.floor(Math.random() * tracks.length)
+                : (idx + 1) % tracks.length;
+            if (!prefetched.has(nextIdx)) {
+                prefetched.add(nextIdx);
+                const probe = new Audio();
+                probe.preload = 'auto';
+                probe.src = tracks[nextIdx].src;
+            }
+        }
     });
 
     audio.addEventListener('loadedmetadata', () => {

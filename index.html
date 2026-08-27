@@ -20,13 +20,13 @@
     <meta property="twitter:title" content="ARMAAN AHMAD ANSARI // Portfolio">
     <meta property="twitter:description" content="Personal portfolio, vault, and digital playground of Armaan Ahmad Ansari.">
     <meta property="twitter:image" content="https://armevox.vercel.app/assets/pfp.jpg">
-    <!-- Google Fonts: Space Grotesk -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
-    <!-- Google Fonts: Anton for Typographic Brutalism -->
-    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    <!-- Fonts (self-hosted) -->
+    <link rel="preload" href="assets/fonts/space-grotesk-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/anton-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="fonts.css">
+
+    <!-- LCP image: profile photo -->
+    <link rel="preload" href="assets/pfp.webp" as="image" type="image/webp" fetchpriority="high">
     
     <!-- Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="assets/pfp.jpg">
@@ -36,6 +36,9 @@
 </head>
 
 <body>
+    <!-- Accessibility: skip to content -->
+    <a class="skip-link" href="#home">Skip to content</a>
+
     <!-- Main Content -->
 
     <!-- Glitch Mode Removed -->
@@ -108,7 +111,11 @@
                 <!-- Right: Profile Picture -->
                 <div class="brutal-profile">
                     <div class="profile-img-container sketchy-box reveal">
-                        <img src="assets/pfp.jpg" alt="Armaan Ahmad Ansari Profile Photo" class="profile-img brutal-img">
+                        <picture>
+                            <source srcset="assets/pfp.webp" type="image/webp">
+                            <img src="assets/pfp.jpg" alt="Armaan Ahmad Ansari Profile Photo"
+                                class="profile-img brutal-img" width="512" height="512" fetchpriority="high">
+                        </picture>
                         <div class="floating-badge brutal-badge">✦ armevox</div>
                     </div>
                 </div>
@@ -136,7 +143,9 @@
                         </div>
                         <div class="term-output" id="arch-output"></div>
                         <div class="term-line hidden-prompt" id="arch-prompt-2">
-                            <span class="term-prompt">[armaan@archlinux ~]$</span> <span class="blinking-cursor">_</span>
+                            <span class="term-prompt">[armaan@archlinux ~]$</span>
+                            <input class="term-input" id="arch-input" type="text"
+                                autocomplete="off" spellcheck="false" aria-label="Terminal command input">
                         </div>
                     </div>
                 </div>
@@ -170,10 +179,11 @@
                 <!-- Fun Fact Box -->
                 <div class="bento-card-item sketchy-box reveal delay-200 bg-dark caution-tape-alt" id="fun-fact-card">
                     <div class="wireframe-label">[DATA:TRIVIA]</div>
+                    <button class="fact-shuffle" id="fact-shuffle" aria-label="Show a new random fact" title="New fact">⤨</button>
                     <div class="bento-label">Random Insight</div>
                     <div class="fact-icon">✦</div>
                     <h3 id="fun-fact-text" class="raw-tag" data-tag="h3">Loading trivia...</h3>
-                    <p class="fact-sub raw-tag" data-tag="p">Refresh for a new fact</p>
+                    <p class="fact-sub raw-tag" data-tag="p">Hit shuffle for a new fact</p>
                 </div>
 
                 <!-- Polyglot Box -->
@@ -398,30 +408,6 @@
                     </div>
                 </div>
 
-                <!-- Project 4: VibePlayer -->
-                <div class="dir-row reveal delay-100">
-                    <div class="dir-header">
-                        <span class="dir-perms">-rwxr--r--</span>
-                        <span class="dir-name">VIBEPLAYER_EXP.MP3</span>
-                    </div>
-                    <div class="dir-content">
-                        <p class="dir-desc">> Interactive Audio • Physics-based UI • Secret Access</p>
-                        <span class="dir-execute-btn disabled">[ACCESS_DENIED]</span>
-                    </div>
-                </div>
-
-                <!-- Project 6: AOSP -->
-                <div class="dir-row reveal delay-200">
-                    <div class="dir-header">
-                        <span class="dir-perms">drwxr-xr-x</span>
-                        <span class="dir-name">AOSP_SYSTEM_MODS/</span>
-                    </div>
-                    <div class="dir-content">
-                        <p class="dir-desc">> Custom Android Builds • Low-level C++ • Linux Kernel</p>
-                        <span class="dir-execute-btn disabled">[SYSTEM_LOCKED]</span>
-                    </div>
-                </div>
-
                 <!-- Project 7: Android Kernel -->
                 <div class="dir-row reveal">
                     <div class="dir-header">
@@ -434,39 +420,34 @@
                     </div>
                 </div>
 
-                <!-- Project 8: QR Matrix -->
-                <div class="dir-row reveal delay-100">
+            </div>
+
+            <!-- Under Development -->
+            <div class="dir-wip-header reveal">
+                <span class="dir-perms">drwxr-xr-x</span>
+                <span class="dir-name">UNDER_DEVELOPMENT/</span>
+                <span class="wip-meta">2 processes running</span>
+            </div>
+            <div class="directory-list wip-list">
+                <div class="dir-row wip reveal">
                     <div class="dir-header">
-                        <span class="dir-perms">-rwxr-xr-x</span>
+                        <span class="dir-perms">-rw-------</span>
                         <span class="dir-name">QR_MATRIX_ENCODER.JS</span>
                     </div>
                     <div class="dir-content">
                         <p class="dir-desc">> High-density dynamic QR generation • ECC recovery • Payload compression</p>
-                        <a href="#" class="dir-execute-btn disabled">[AWAITING_LINK]</a>
+                        <span class="dir-execute-btn wip-badge">[ IN_DEV ]</span>
                     </div>
                 </div>
 
-                <!-- Project 9: Packet Sniffer -->
-                <div class="dir-row reveal delay-200">
+                <div class="dir-row wip reveal delay-100">
                     <div class="dir-header">
-                        <span class="dir-perms">-rwxr-x---</span>
+                        <span class="dir-perms">-rw-------</span>
                         <span class="dir-name">PACKET_SNIFFER_CLI.GO</span>
                     </div>
                     <div class="dir-content">
                         <p class="dir-desc">> Raw socket listener • TCP/UDP packet analysis • Real-time terminal graphing</p>
-                        <a href="#" class="dir-execute-btn disabled">[AWAITING_LINK]</a>
-                    </div>
-                </div>
-
-                <!-- Project 10: Fractal Engine -->
-                <div class="dir-row reveal">
-                    <div class="dir-header">
-                        <span class="dir-perms">-rwxr-xr-x</span>
-                        <span class="dir-name">FRACTAL_RENDER.GLSL</span>
-                    </div>
-                    <div class="dir-content">
-                        <p class="dir-desc">> WebGL shader engine • Mandelbrot deep zoom • Real-time GPU compute</p>
-                        <a href="#" class="dir-execute-btn disabled">[AWAITING_LINK]</a>
+                        <span class="dir-execute-btn wip-badge">[ IN_DEV ]</span>
                     </div>
                 </div>
             </div>
@@ -475,8 +456,7 @@
         <!-- CTA Section -->
         <section id="contact" class="cta-section section-spacing">
             <h2 class="section-title center-text reveal" data-scramble>Let's connect</h2>
-            <p class="center-text reveal delay-100" style="margin-bottom: 2rem; font-size: 1.15rem;">Find me on the
-                interwebs or drop a message into the void.</p>
+            <p class="center-text section-sub reveal delay-100">find me on the interwebs, or drop a message into the void</p>
 
             <div class="hazard-billboard reveal-left delay-200">
                 <div class="hazard-tape"></div>
@@ -490,6 +470,9 @@
                     <a href="https://github.com/BlueTheBoss" target="_blank" class="hazard-btn">
                         GITHUB
                     </a>
+                    <button type="button" class="hazard-btn" id="copy-email-btn" title="Copy email address">
+                        EMAIL
+                    </button>
                 </div>
                 <div class="hazard-tape"></div>
             </div>
@@ -497,14 +480,19 @@
             <div class="postcard-container reveal delay-300">
                 <div class="postcard-header">
                     [ OFFICIAL COMMUNICATION DOCUMENT ]
+                    <div class="postcard-stamp" aria-hidden="true">✦</div>
                 </div>
-                <form id="contact-form" class="postcard-form">
+                <form id="contact-form" class="postcard-form" novalidate>
+                    <!-- Honeypot: hidden from humans, catnip for bots -->
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off"
+                        style="position:absolute; left:-9999px; height:0; width:0; opacity:0;" aria-hidden="true">
                     <div class="postcard-row">
                         <input type="text" id="name" placeholder="Identifier (Name)" required class="postcard-input">
                         <input type="email" id="email" placeholder="Return Address (Email)" required class="postcard-input">
                     </div>
                     <textarea id="message" placeholder="Enter Payload (Message)..." required class="postcard-input"
-                        rows="4"></textarea>
+                        rows="4" maxlength="5000"></textarea>
+                    <span class="msg-counter" id="msg-count">[ 0 / 5000 ]</span>
                     <button type="submit" class="postcard-submit" id="submit-btn">[ SUBMIT DOCUMENT ]</button>
                 </form>
             </div>
@@ -535,9 +523,21 @@
     </div>
 
     <!-- PIN Modal with Keypad for Secret Music Player -->
-    <div id="pin-modal" class="pin-modal">
+    <div id="pin-modal" class="pin-modal" role="dialog" aria-modal="true" aria-label="Secure access">
         <div class="pin-modal-content neubrutalism-box">
-            <h3 class="modal-title">Enter Secret PIN</h3>
+            <div class="pin-header">
+                <div class="pin-lock-badge" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                        <circle cx="12" cy="16" r="1.6" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="modal-title">Secure Access</h3>
+                    <p class="modal-sub">VibePlayer // Audio Vault</p>
+                </div>
+            </div>
 
             <div class="pin-display" id="pin-dot-display">
                 <span class="pin-dot" id="dot-0"></span>
@@ -558,12 +558,12 @@
                 <button class="key-btn" data-val="7">7</button>
                 <button class="key-btn" data-val="8">8</button>
                 <button class="key-btn" data-val="9">9</button>
-                <button class="key-btn clear" id="key-clear">C</button>
+                <button class="key-btn clear" id="key-clear" aria-label="Clear">C</button>
                 <button class="key-btn" data-val="0">0</button>
-                <button class="key-btn cancel" id="pin-cancel">×</button>
+                <button class="key-btn cancel" id="pin-cancel" aria-label="Cancel">×</button>
             </div>
 
-            <p id="pin-error" class="pin-error-msg"></p>
+            <p id="pin-error" class="pin-error-msg" role="alert" aria-live="polite"></p>
         </div>
     </div>
     <!-- SVG Filter for Wobble Effect -->
@@ -574,9 +574,9 @@
         </filter>
     </svg>
 
-    <!-- SortableJS for Drag and Drop -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <script src="script.js"></script>
+    <!-- SortableJS for Drag and Drop (pinned version) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+    <script defer src="script.js"></script>
 </body>
 
 </html>

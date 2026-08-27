@@ -1,14 +1,6 @@
 const { Dropbox } = require('dropbox');
 const mm = require('music-metadata');
-const crypto = require('crypto');
-
-// Must match the function in api/verify.js exactly
-function generateSessionToken(secretPin) {
-    return crypto
-        .createHmac('sha256', secretPin)
-        .update('music_session_v1')
-        .digest('hex');
-}
+const { isAuthenticated } = require('./_lib/security');
 
 // Initialize Dropbox client
 const config = {};
@@ -43,154 +35,154 @@ if (MUSIC_PATH === '/') {
 // Simple in-memory cache
 let cachedTracks = null;
 let cacheTime    = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Cap parallel Dropbox/metadata work so a big folder can't hammer the API
+const SCAN_CONCURRENCY = 5;
+
+// ── Library scan (de-duplicated) ───────────────────────────────────────────────
+// Concurrent callers share one in-flight scan instead of stampeding Dropbox.
+let scanPromise = null;
+
+function startScan() {
+    if (!scanPromise) {
+        console.log(`Scanning Dropbox: ${MUSIC_PATH}`);
+        scanPromise = performScan().finally(() => { scanPromise = null; });
+    }
+    return scanPromise;
+}
+
+async function performScan() {
+    // 1. List files in the target folder
+    const response = await dbx.filesListFolder({ path: MUSIC_PATH });
+    const audioFiles = response.result.entries.filter(entry => {
+        if (entry['.tag'] !== 'file') return false;
+        const ext = entry.name.toLowerCase().split('.').pop();
+        return ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext);
+    });
+
+    // 2. Process files with bounded concurrency
+    // Each file gets ONE temporary link (valid ~4h, unguessable, no public
+    // shared link is ever created) used for both metadata scanning and playback.
+    const results = new Array(audioFiles.length).fill(null);
+    let cursor = 0;
+
+    const worker = async () => {
+        while (cursor < audioFiles.length) {
+            const i = cursor++;
+            results[i] = await processFile(audioFiles[i]).catch(err => {
+                console.error(`Error processing ${audioFiles[i].name}:`, err.message);
+                return null;
+            });
+        }
+    };
+    await Promise.all(
+        Array.from({ length: Math.min(SCAN_CONCURRENCY, audioFiles.length) }, worker)
+    );
+
+    const tracks = results.filter(t => t !== null);
+
+    // Update cache
+    cachedTracks = tracks;
+    cacheTime    = Date.now();
+
+    return tracks;
+}
 
 module.exports = async (req, res) => {
     try {
-        // 0. Security Check — validate HMAC session token (not the raw PIN)
-        const clientToken = req.headers['x-session-token'];
-        const serverPin   = process.env.SECRET_PIN;
-
-        if (!serverPin || !clientToken) {
-            console.warn(`Unauthorized music API access attempt — missing token`);
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        const expectedToken = generateSessionToken(serverPin);
-        let tokenValid = false;
-        try {
-            // Timing-safe compare prevents length-based timing attacks
-            tokenValid = crypto.timingSafeEqual(
-                Buffer.from(clientToken),
-                Buffer.from(expectedToken)
-            );
-        } catch {
-            tokenValid = false; // Buffers of different length throw — treat as invalid
-        }
-
-        if (!tokenValid) {
-            console.warn(`Unauthorized music API access attempt — invalid token`);
+        // 0. Security Check — HttpOnly session cookie (set by /api/verify)
+        if (!isAuthenticated(req)) {
+            console.warn(`Unauthorized music API access attempt`);
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
         // 1. Check Credentials
         if (!REFRESH_TOKEN || !APP_KEY || !APP_SECRET) {
             console.error('Missing Dropbox credentials in .env');
-            return res.status(500).json({ 
-                error: 'Missing .env configuration', 
-                details: 'Check DROPBOX_APP_KEY, DROPBOX_APP_SECRET, and DROPBOX_REFRESH_TOKEN' 
+            return res.status(500).json({
+                error: 'Missing .env configuration',
+                details: 'Check DROPBOX_APP_KEY, DROPBOX_APP_SECRET, and DROPBOX_REFRESH_TOKEN'
             });
         }
 
-        // 2. Return cache if valid (unless ?nocache=true or ?refresh=true is passed)
+        // 2. Cache strategy (unless ?nocache=true or ?refresh=true is passed)
         const forceRefresh = req.query.nocache === 'true' || req.query.refresh === 'true';
-        if (!forceRefresh && cachedTracks && cacheTime && (Date.now() - cacheTime) < CACHE_DURATION) {
-            return res.status(200).json(cachedTracks);
+        if (!forceRefresh && cachedTracks) {
+            const age = Date.now() - cacheTime;
+
+            if (age < CACHE_DURATION) {
+                // Fresh — serve instantly, zero Dropbox calls
+                return res.status(200).json(cachedTracks);
+            }
+
+            // Stale-while-revalidate — serve the old list right now and
+            // refresh in the background so the next request is warm.
+            res.status(200).json(cachedTracks);
+            startScan().catch(err => console.warn('Background refresh failed:', err.message));
+            return;
         }
 
-        console.log(`Scanning Dropbox: ${MUSIC_PATH}`);
-
-        // 3. List files in the target folder
-        const response = await dbx.filesListFolder({ path: MUSIC_PATH });
-        const audioFiles = response.result.entries.filter(entry => {
-            if (entry['.tag'] !== 'file') return false;
-            const ext = entry.name.toLowerCase().split('.').pop();
-            return ['mp3', 'wav', 'ogg', 'm4a'].includes(ext);
-        });
-
-        // Process files in parallel
-        const trackPromises = audioFiles.map(async (file) => {
-            try {
-                let sharedLink = null;
-                let artist = '';
-                let title = file.name.replace(/\.[^/.]+$/, '');
-                
-                // 1. Get existing link or create new one
-                try {
-                    const links = await dbx.sharingListSharedLinks({ path: file.path_lower, direct_only: true });
-                    if (links.result.links && links.result.links.length > 0) {
-                        sharedLink = links.result.links[0].url;
-                    }
-                } catch (e) {}
-
-                if (!sharedLink) {
-                    const linkResp = await dbx.sharingCreateSharedLinkWithSettings({
-                        path: file.path_lower,
-                        settings: { requested_visibility: 'public' }
-                    });
-                    sharedLink = linkResp.result.url;
-                }
-
-                // 2. Extract Metadata (Gaining direct access via TemporaryLink to support Range)
-                try {
-                    const tempLinkResp = await dbx.filesGetTemporaryLink({ path: file.path_lower });
-                    const tempUrl = tempLinkResp.result.link;
-
-                    // Fetch exactly the first 1MB using standard HTTP headers
-                    const metadataResp = await fetch(tempUrl, {
-                        headers: { 'Range': 'bytes=0-1048575' }
-                    });
-
-                    if (metadataResp.ok || metadataResp.status === 206) {
-                        const arrayBuffer = await metadataResp.arrayBuffer();
-                        const buffer = Buffer.from(arrayBuffer);
-                        
-                        const metadata = await mm.parseBuffer(buffer);
-                        // Check multiple artist fields - specifically looking for 'Contributing Artist' (artists array)
-                        artist = metadata.common.artist || 
-                                 (metadata.common.artists && metadata.common.artists.join(', ')) ||
-                                 metadata.common.albumartist || 
-                                 metadata.common.composer ||
-                                 '';
-                        if (metadata.common.title) title = metadata.common.title;
-                        const duration = metadata.format.duration || 0;
-                        
-                        // 3. Convert to direct stream link
-                        const directSrc = sharedLink
-                            .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-                            .replace('?dl=0', '');
-
-                        return { title, artist, duration, src: directSrc };
-                    }
-                } catch (metaErr) {
-                    console.warn(`Direct-scan failed for ${file.name}: ${metaErr.message}`);
-                }
-
-                // Fallback: If artist is still empty, try to split from filename/title
-                if (!artist && title.includes(' - ')) {
-                    const parts = title.split(' - ');
-                    artist = parts[0].trim();
-                    title = parts[1].trim();
-                }
-
-                if (!artist) artist = 'Unknown Artist';
-
-                // 3. Convert to direct stream link
-                const directSrc = sharedLink
-                    .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-                    .replace('?dl=0', '');
-
-                return { title, artist, src: directSrc };
-            } catch (err) {
-                console.error(`Error processing ${file.name}:`, err.message);
-                return null;
-            }
-        });
-
-        const tracks = (await Promise.all(trackPromises)).filter(t => t !== null);
-
-        // Update cache
-        cachedTracks = tracks;
-        cacheTime    = Date.now();
-
+        // 3. Cold cache or forced refresh — full scan
+        const tracks = await startScan();
         res.status(200).json(tracks);
 
     } catch (error) {
         console.error('Dropbox API Error:', error);
-        
+
         // Stale cache fallback
         if (cachedTracks) return res.status(200).json(cachedTracks);
 
         res.status(500).json({ error: 'Failed to fetch music from Dropbox' });
     }
 };
+
+async function processFile(file) {
+    let artist = '';
+    let title = file.name.replace(/\.[^/.]+$/, '');
+    let directSrc = null;
+
+    try {
+        // Single temporary link per file — doubles as the stream URL and the
+        // metadata source. Links auto-expire (~4h), so nothing permanent leaks.
+        const tempLinkResp = await dbx.filesGetTemporaryLink({ path: file.path_lower });
+        const tempUrl = tempLinkResp.result.link;
+        directSrc = tempUrl;
+
+        // Fetch exactly the first 1MB using standard HTTP headers
+        const metadataResp = await fetch(tempUrl, {
+            headers: { 'Range': 'bytes=0-1048575' }
+        });
+
+        if (metadataResp.ok || metadataResp.status === 206) {
+            const arrayBuffer = await metadataResp.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            const metadata = await mm.parseBuffer(buffer);
+            // Check multiple artist fields - specifically looking for 'Contributing Artist' (artists array)
+            artist = metadata.common.artist ||
+                     (metadata.common.artists && metadata.common.artists.join(', ')) ||
+                     metadata.common.albumartist ||
+                     metadata.common.composer ||
+                     '';
+            if (metadata.common.title) title = metadata.common.title;
+            const duration = metadata.format.duration || 0;
+
+            return { title, artist, duration, src: directSrc };
+        }
+    } catch (metaErr) {
+        console.warn(`Direct-scan failed for ${file.name}: ${metaErr.message}`);
+    }
+
+    // Fallback: derive artist from "Artist - Title" filename pattern
+    if (!artist && title.includes(' - ')) {
+        const parts = title.split(' - ');
+        artist = parts[0].trim();
+        title = parts[1].trim();
+    }
+
+    if (!directSrc) return null; // No playable URL — skip the track entirely
+
+    if (!artist) artist = 'Unknown Artist';
+    return { title, artist, src: directSrc };
+}

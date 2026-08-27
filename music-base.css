@@ -1,0 +1,272 @@
+/* ============================================================
+   MUSIC-BASE.CSS — minimal shared core for the VibePlayer page.
+   Contains only what music.html needs: design tokens, reset,
+   cursor, scrollbar and theme toggle. The portfolio page keeps
+   using the full style.css.
+   ============================================================ */
+
+:root {
+    /* =========================================
+       DEEP OCEAN (BLUEISH) - LIGHT MODE
+       ========================================= */
+    --bg-page: #E6F2FF;
+    --bg-nav: #FFFFFF;
+    --bg-nav-rgb: 255, 255, 255;
+    --bg-ticker: #D9EBFF;
+    --bg-card: #FFFFFF;
+    --bg-form: #FFFFFF;
+    --bg-input: #CCE0FF;
+    --bg-footer: #CCE0FF;
+    --bg-name-highlight: #0088FF;
+    --bg-btn-primary: #001A33;
+
+    --accent-base: #0044CC; /* Electric Blue */
+    --accent-base-rgb: 0, 68, 204;
+    --accent-tag: #0088FF; /* Vibrant Blue */
+    --accent-tint: #0088FF;
+    --accent-strong: #002266; /* Deep Blue */
+    --accent-dark: #001133;
+
+    --text-primary: #001A33; /* Very Dark Blue */
+    --text-secondary: #003366;
+    --text-muted: #4D79FF;
+    --text-ticker: #001A33;
+    --text-footer: #003366;
+    --text-btn-primary: #FFFFFF;
+    --text-name: #FFFFFF;
+
+    --border-nav: #001A33;
+    --border-card: #001A33;
+    --border-input: #001A33;
+    --border-footer-top: #001A33;
+    --divider-dashed: #001A33;
+
+    /* Base Logic Mapping */
+    --bg-color: var(--bg-page);
+    --text-color: var(--text-primary);
+    --border-color: var(--border-card);
+    --border-width: 3px;
+
+    /* Aliases consumed by music-player.css (resolve per active theme) */
+    --text-dim: var(--text-secondary);
+    --bg-raised: var(--bg-input);
+    --bg-surface: var(--bg-ticker);
+
+    --yellow: #0088FF; /* Replaced Yellow with Vibrant Blue */
+    --blue: #0044CC; /* Electric Blue */
+    --neon: #00FFFF; /* Cyan */
+    --white: #FFFFFF;
+    --gray: #CCE0FF;
+
+    /* Functional Themes */
+    --theme-bg: var(--bg-page);
+    --theme-surface: var(--bg-card);
+    --theme-card: var(--bg-card);
+    --theme-raised: var(--bg-input);
+    --theme-active: var(--bg-btn-primary);
+    --theme-hover: #D9EBFF;
+    --theme-accent-bg: var(--accent-tint);
+    --theme-accent-text: var(--text-primary);
+}
+
+[data-theme="dark"] {
+    /* =========================================
+       DEEP OCEAN (BLUEISH) - DARK MODE
+       ========================================= */
+    --bg-page: #000814;
+    --bg-nav: #001122;
+    --bg-nav-rgb: 0, 17, 34;
+    --bg-ticker: #001A33;
+    --bg-card: #001122;
+    --bg-form: #001122;
+    --bg-input: #002244;
+    --bg-footer: #000C1A;
+    --bg-name-highlight: #0088FF;
+    --bg-btn-primary: #0088FF;
+
+    --accent-base: #0088FF; /* Vibrant Blue */
+    --accent-base-rgb: 0, 136, 255;
+    --accent-tag: #0088FF;
+    --accent-tint: #0044CC; /* Electric Blue */
+    --accent-strong: #00FFFF; /* Cyan */
+    --accent-hilite: #0088FF;
+    --accent-text: #000814;
+    --accent-dark: #FFFFFF;
+
+    --text-primary: #E6F2FF;
+    --text-secondary: #99C2FF;
+    --text-muted: #4D94FF;
+    --text-ticker: #E6F2FF;
+    --text-footer: #99C2FF;
+    --text-btn-primary: #000814;
+    --text-name: #E6F2FF;
+
+    --border-nav: #003366;
+    --border-card: #003366;
+    --border-input: #003366;
+    --border-footer-top: #003366;
+    --divider-dashed: #003366;
+
+    /* Base Logic Mapping Override */
+    --bg-color: var(--bg-page);
+    --text-color: var(--text-primary);
+    --border-color: var(--border-card);
+    --white: var(--bg-nav);
+    --gray: var(--bg-card);
+
+    /* Functional Themes Override */
+    --theme-bg: var(--bg-page);
+    --theme-surface: #001122;
+    --theme-card: var(--bg-card);
+    --theme-raised: var(--bg-input);
+    --theme-active: var(--bg-btn-primary);
+    --theme-hover: #002244;
+    --theme-accent-bg: var(--accent-tint);
+    --theme-accent-text: var(--accent-text);
+}
+
+/* ---- Reset & Base ---- */
+
+/* Opt into cross-document View Transitions (portfolio <-> player) */
+@view-transition {
+    navigation: auto;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+::selection {
+    background-color: var(--yellow);
+    color: var(--text-color);
+}
+
+:focus-visible {
+    outline: 3px solid var(--accent-base);
+    outline-offset: 4px;
+    border-radius: 2px;
+}
+
+body {
+    font-family: 'Space Grotesk', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+    overflow-x: hidden;
+    cursor: none; /* Hide default cursor */
+}
+
+a, button, input, textarea {
+    cursor: none !important;
+}
+
+h1, h2, h3, h4, h5 {
+    color: var(--text-primary);
+}
+
+h1 { font-size: 3.5rem; line-height: 1.1; font-weight: 700; }
+h2 { font-size: 2.25rem; font-weight: 700; }
+
+@media (max-width: 480px) {
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.6rem; }
+}
+
+/* ---- Custom Scrollbar ---- */
+::-webkit-scrollbar { width: 12px; }
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+    border-left: var(--border-width) solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border: 2px solid var(--bg-color);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
+
+/* ---- Custom Cursor ---- */
+.custom-cursor {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000000; /* Extremely high to stay above modals */
+    top: 0;
+    left: 0;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+    background-color: transparent;
+}
+
+.custom-cursor.hover {
+    width: 45px;
+    height: 45px;
+    background-color: var(--yellow);
+    border-color: var(--border-color);
+    mix-blend-mode: multiply;
+}
+
+@media (pointer: coarse) {
+    body, a, button, input, textarea {
+        cursor: auto !important;
+    }
+    .custom-cursor {
+        display: none !important;
+    }
+}
+
+/* ---- Theme Toggle Button ---- */
+.theme-toggle-btn {
+    background-color: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 40px;
+    padding: 0.25rem 1.25rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: transform 0.3s ease-out, box-shadow 0.2s ease, background-color 0.2s ease;
+    color: var(--text-color);
+    box-shadow: 2px 2px 0px 0px var(--border-color);
+    margin-left: 0.5rem;
+}
+
+.theme-toggle-btn:hover {
+    transform: translateY(-2px) scale(1.05) rotate(15deg);
+    box-shadow: 4px 4px 0px 0px var(--border-color);
+    background-color: var(--accent-tint);
+}
+
+@media (max-width: 480px) {
+    .theme-toggle-btn { font-size: 0.9rem; padding: 0.2rem 0.8rem; }
+}
+
+/* ---- Shared Neubrutalist Card (shortcuts modal) ---- */
+.neubrutalism-box {
+    background-color: #fff;
+    border: 5px solid #000;
+    box-shadow: 10px 10px 0px 0px #000;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+[data-theme="dark"] .neubrutalism-box {
+    background-color: #1a1a1a;
+    border-color: #eee;
+    box-shadow: 10px 10px 0px 0px #eee;
+}

@@ -1,27 +1,12 @@
-// Authentication Helpers (Persistent Cookies)
-const setCookie = (name, value, days) => {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict";
-};
-
-const getCookie = (name) => {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for(let i=0;i < ca.length;i++) {
-        let c = ca[i];
-        while (c.charAt(0)==' ') c = c.substring(1,c.length);
-        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
-    }
-    return null;
-};
+// Session state lives in an HttpOnly cookie managed by /api/verify —
+// this script never touches tokens directly.
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Portfolio site loaded");
+
+    // ---- Motion preferences (shared by every animation below) ----
+    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const onMotionAllowed = (fn) => { if (!REDUCED_MOTION) fn(); };
 
     // Auto calculate age
     const determineAge = () => {
@@ -59,9 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Animated SVG Wobble Filter
     const wobbleNoise = document.getElementById('wobble-noise');
     let wobbleSeed = 0;
-    if (wobbleNoise) {
-        // Update seed constantly to jitter the SVG displacement
+    if (wobbleNoise && !REDUCED_MOTION) {
+        // Update seed constantly to jitter the SVG displacement.
+        // Skipped entirely in background tabs and for reduced-motion users.
         setInterval(() => {
+            if (document.hidden) return;
             wobbleSeed += 1;
             wobbleNoise.setAttribute('seed', wobbleSeed);
         }, 120); // 120ms gives it a classic 8fps "boiling lines" animation feel
@@ -115,21 +102,26 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // --- B. Hero Particle Canvas ---
-    (function () {
+    onMotionAllowed(() => {
         const canvas = document.getElementById('hero-particles');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         let W, H;
         const particles = [];
 
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
         const resize = () => {
-            W = canvas.width  = canvas.offsetWidth;
-            H = canvas.height = canvas.offsetHeight;
+            W = canvas.offsetWidth;
+            H = canvas.offsetHeight;
+            canvas.width  = Math.round(W * DPR);
+            canvas.height = Math.round(H * DPR);
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         };
         resize();
         window.addEventListener('resize', resize, { passive: true });
 
-        const N = 55;
+        // Fewer particles on small screens
+        const N = window.matchMedia('(max-width: 768px)').matches ? 28 : 55;
         const mk = () => ({
             x: Math.random() * W,
             y: Math.random() * H,
@@ -140,8 +132,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         for (let i = 0; i < N; i++) particles.push(mk());
 
+        let running = false;
+        let rafId = null;
+
+        // Pause the whole loop while the hero is scrolled out of view
         const tick = () => {
-            requestAnimationFrame(tick);
             ctx.clearRect(0, 0, W, H);
             particles.forEach(p => {
                 p.x += p.vx;
@@ -154,9 +149,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillStyle = `rgba(91,141,184,${p.a})`;
                 ctx.fill();
             });
+            rafId = requestAnimationFrame(tick);
         };
-        tick();
-    })();
+
+        new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !running) {
+                running = true;
+                rafId = requestAnimationFrame(tick);
+            } else if (!entry.isIntersecting && running) {
+                running = false;
+                cancelAnimationFrame(rafId);
+            }
+        }, { threshold: 0 }).observe(canvas);
+    });
 
     // --- C. Rotating Typing Subtitle ---
     (function () {
@@ -400,24 +405,45 @@ document.addEventListener('DOMContentLoaded', () => {
         let mouseX = 0, mouseY = 0;
         let cursorX = 0, cursorY = 0;
         let trailX = 0, trailY = 0;
+        let rafId = null;
+        let lastMoveAt = 0;
 
-        document.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
-
-        const animateCursor = () => {
-            cursorX += (mouseX - cursorX) * 0.15;
-            cursorY += (mouseY - cursorY) * 0.15;
-            cursor.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%, -50%)`;
-
-            trailX += (mouseX - trailX) * 0.08;
-            trailY += (mouseY - trailY) * 0.08;
-            trail.style.transform = `translate(${trailX}px, ${trailY}px) translate(-50%, -50%)`;
-
-            requestAnimationFrame(animateCursor);
+        const place = (el, x, y) => {
+            el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
         };
-        requestAnimationFrame(animateCursor);
+
+        // Reduced motion: no springs, no loop — just follow instantly
+        if (REDUCED_MOTION) {
+            document.addEventListener('mousemove', (e) => place(cursor, e.clientX, e.clientY));
+            trail.style.display = 'none';
+        } else {
+            const animateCursor = () => {
+                cursorX += (mouseX - cursorX) * 0.15;
+                cursorY += (mouseY - cursorY) * 0.15;
+                place(cursor, cursorX, cursorY);
+
+                trailX += (mouseX - trailX) * 0.08;
+                trailY += (mouseY - trailY) * 0.08;
+                place(trail, trailX, trailY);
+
+                // Stop burning frames once the springs have settled
+                const settled = (performance.now() - lastMoveAt > 250) &&
+                    Math.abs(mouseX - cursorX) + Math.abs(mouseY - cursorY) < 0.5 &&
+                    Math.abs(mouseX - trailX) + Math.abs(mouseY - trailY) < 0.5;
+                if (settled) {
+                    rafId = null;
+                    return;
+                }
+                rafId = requestAnimationFrame(animateCursor);
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                lastMoveAt = performance.now();
+                if (rafId === null) rafId = requestAnimationFrame(animateCursor);
+            }, { passive: true });
+        }
 
         const interactables = document.querySelectorAll('a, button, input, textarea, .project-card, .contact-tile, .theme-toggle-btn');
         interactables.forEach(el => {
@@ -435,24 +461,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // =============================================
     // 9. CLICK SPARKLE BURST
     // =============================================
-    document.addEventListener('click', (e) => {
-        const count = 8 + Math.floor(Math.random() * 4);
-        for (let i = 0; i < count; i++) {
-            const spark = document.createElement('div');
-            spark.classList.add('click-sparkle');
-            const angle = (Math.PI * 2 / count) * i + (Math.random() * 0.5);
-            const dist = 30 + Math.random() * 50;
-            spark.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
-            spark.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
-            spark.style.left = e.clientX + 'px';
-            spark.style.top = e.clientY + 'px';
-            const size = (4 + Math.random() * 5) + 'px';
-            spark.style.width = size;
-            spark.style.height = size;
-            document.body.appendChild(spark);
-            spark.addEventListener('animationend', () => spark.remove());
-        }
-    });
+    if (!REDUCED_MOTION) {
+        document.addEventListener('click', (e) => {
+            const count = 8 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < count; i++) {
+                const spark = document.createElement('div');
+                spark.classList.add('click-sparkle');
+                const angle = (Math.PI * 2 / count) * i + (Math.random() * 0.5);
+                const dist = 30 + Math.random() * 50;
+                spark.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+                spark.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+                spark.style.left = e.clientX + 'px';
+                spark.style.top = e.clientY + 'px';
+                const size = (4 + Math.random() * 5) + 'px';
+                spark.style.width = size;
+                spark.style.height = size;
+                document.body.appendChild(spark);
+                spark.addEventListener('animationend', () => spark.remove());
+            }
+        });
+    }
 
     // =============================================
     // 10. MAGNETIC BUTTONS + RIPPLE
@@ -482,6 +510,69 @@ document.addEventListener('DOMContentLoaded', () => {
             ripple.addEventListener('animationend', () => ripple.remove());
         });
     });
+
+    // =============================================
+    // 10b. 3D TILT on the profile card
+    // =============================================
+    (function () {
+        const card = document.querySelector('.profile-img-container');
+        if (!card || REDUCED_MOTION || window.matchMedia('(pointer: coarse)').matches) return;
+
+        const MAX_DEG = 10;
+        card.addEventListener('mousemove', (e) => {
+            if (!card.classList.contains('active')) return; // wait for reveal
+            const r = card.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width - 0.5;
+            const py = (e.clientY - r.top) / r.height - 0.5;
+            card.classList.add('tilting');
+            card.style.transform =
+                `perspective(700px) rotateX(${(-py * MAX_DEG).toFixed(2)}deg) rotateY(${(px * MAX_DEG).toFixed(2)}deg) scale(1.04)`;
+        });
+        card.addEventListener('mouseleave', () => {
+            card.classList.remove('tilting');
+            card.style.transform = '';
+        });
+    })();
+
+    // =============================================
+    // 10c. Marquees speed up with scroll velocity
+    // =============================================
+    (function () {
+        if (REDUCED_MOTION) return;
+        const tracks = document.querySelectorAll('.brutal-marquee-track, .marquee-content');
+        if (!tracks.length) return;
+
+        let lastY = window.scrollY;
+        let lastT = performance.now();
+        let rate = 1, target = 1, raf = null, decayTimer = null;
+
+        const tick = () => {
+            rate += (target - rate) * 0.08;
+            tracks.forEach(t => t.getAnimations().forEach(a => {
+                if (a instanceof CSSAnimation) a.playbackRate = rate;
+            }));
+            if (Math.abs(target - rate) > 0.02 || target !== 1) {
+                raf = requestAnimationFrame(tick);
+            } else {
+                rate = 1;
+                raf = null;
+            }
+        };
+
+        window.addEventListener('scroll', () => {
+            const now = performance.now();
+            const velocity = Math.abs(window.scrollY - lastY) / Math.max(1, now - lastT); // px/ms
+            lastY = window.scrollY;
+            lastT = now;
+            target = Math.min(1 + velocity * 0.6, 3.5);
+            if (raf === null) raf = requestAnimationFrame(tick);
+            clearTimeout(decayTimer);
+            decayTimer = setTimeout(() => {
+                target = 1;
+                if (raf === null) raf = requestAnimationFrame(tick);
+            }, 140);
+        }, { passive: true });
+    })();
 
     // =============================================
     // 11. PARALLAX LAYERS (hero section)
@@ -573,13 +664,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastClose = document.getElementById('toast-close');
     let toastTimeout;
 
-    const showToast = (msg, isError = false) => {
+    const showToast = (msg, type = 'success') => {
+        if (type === true) type = 'error'; // legacy boolean calls
         if (!toast || !toastMessage) return;
         toastMessage.textContent = msg;
-        
+
         const toastContent = toast.querySelector('.toast-content');
         if (toastContent) {
-            toastContent.style.backgroundColor = isError ? '#ffb3ba' : 'var(--yellow)';
+            toastContent.classList.remove('success', 'error', 'info');
+            toastContent.classList.add(['success', 'error', 'info'].includes(type) ? type : 'success');
+            toastContent.style.backgroundColor = ''; // variants own the styling now
         }
 
         toast.classList.add('show');
@@ -594,16 +688,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (contactForm) {
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const msgInput = document.getElementById('message');
+        const msgCount = document.getElementById('msg-count');
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        const SUBMIT_LABEL = '[ SUBMIT DOCUMENT ]';
+
+        // Character counter
+        if (msgInput && msgCount) {
+            msgInput.addEventListener('input', () => {
+                msgCount.textContent = `[ ${msgInput.value.length} / 5000 ]`;
+            });
+        }
+
+        // Inline validation as you type
+        const mark = (el, ok) => {
+            el.classList.toggle('valid', ok);
+            el.classList.toggle('invalid', !ok && el.value.length > 0);
+        };
+        if (nameInput) nameInput.addEventListener('input', () => mark(nameInput, nameInput.value.trim().length > 0));
+        if (emailInput) emailInput.addEventListener('input', () => mark(emailInput, EMAIL_RE.test(emailInput.value.trim())));
+
         contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const message = document.getElementById('message').value;
-            
-            submitBtn.textContent = 'Sending...';
+
+            const name = nameInput.value;
+            const email = emailInput.value;
+            const message = msgInput.value;
+            const website = document.getElementById('website')?.value || '';
+
+            // Gate on validation before anything transmits
+            const okName = name.trim().length > 0;
+            const okEmail = EMAIL_RE.test(email.trim());
+            mark(nameInput, okName);
+            mark(emailInput, okEmail);
+            if (!okName || !okEmail || !message.trim()) {
+                showToast('Fix the highlighted fields before sending.', 'error');
+                return;
+            }
+
+            submitBtn.textContent = '[ TRANSMITTING... ]';
+            submitBtn.classList.add('sending');
             submitBtn.disabled = true;
-            
+
             try {
                 // In production, change this URL to your deployed backend URL
                 const response = await fetch('/api/send', {
@@ -611,23 +739,59 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ name, email, message })
+                    body: JSON.stringify({ name, email, message, website })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok && data.success) {
                     showToast("Message sent successfully!");
+                    submitBtn.textContent = '[ SENT ✓ ]';
+                    submitBtn.classList.add('sent');
                     contactForm.reset();
+                    msgCount.textContent = '[ 0 / 5000 ]';
+                    [nameInput, emailInput, msgInput].forEach(el => el.classList.remove('valid', 'invalid'));
                 } else {
                     throw new Error(data.error || 'Failed to send message');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showToast("Oops! Could not send message. Ensure the backend is running.", true);
+                showToast("Oops! Could not send message. Ensure the backend is running.", 'error');
+                submitBtn.textContent = '[ FAILED ✗ ]';
+                submitBtn.classList.add('failed');
             } finally {
-                submitBtn.textContent = 'Send Message';
                 submitBtn.disabled = false;
+                setTimeout(() => {
+                    submitBtn.textContent = SUBMIT_LABEL;
+                    submitBtn.classList.remove('sending', 'sent', 'failed');
+                }, 2400);
+            }
+        });
+    }
+
+    // Copy email to clipboard
+    const copyEmailBtn = document.getElementById('copy-email-btn');
+    if (copyEmailBtn) {
+        copyEmailBtn.addEventListener('click', async () => {
+            const email = 'armaanevo@proton.me';
+            try {
+                await navigator.clipboard.writeText(email);
+                showToast('Email copied to clipboard!', 'success');
+            } catch {
+                // Clipboard API unavailable (http / old browser) — fallback
+                const ta = document.createElement('textarea');
+                ta.value = email;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Email copied to clipboard!', 'success');
+                } catch {
+                    showToast('Copy failed — armaanevo@proton.me', 'error');
+                }
+                ta.remove();
             }
         });
     }
@@ -661,20 +825,43 @@ document.addEventListener('DOMContentLoaded', () => {
         pinValue = '';
         if (pinInput) pinInput.value = '';
         updateDots();
-        if (pinError) pinError.textContent = '';
-        if (pinDotDisplay) {
-            pinDotDisplay.classList.remove('shake');
+        if (pinError) {
+            pinError.textContent = '';
+            pinError.classList.remove('ok');
         }
+        if (pinDotDisplay) {
+            pinDotDisplay.classList.remove('shake', 'granted');
+        }
+    };
+
+    // Centralized open/close with focus management for keyboard users
+    const openPinModal = () => {
+        resetPin();
+        pinModal.classList.add('show');
+        setTimeout(() => keyButtons[0]?.focus({ preventScroll: true }), 30);
+    };
+
+    const closePinModal = () => {
+        pinModal.classList.remove('show');
+        resetPin();
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    };
+
+    // Visual feedback when typing with the physical keyboard
+    const flashKey = (val) => {
+        const btn = document.querySelector(`.key-btn[data-val="${val}"]`);
+        if (!btn) return;
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 140);
     };
 
     if (logo && pinModal) {
         logo.addEventListener('click', (e) => {
             const currentTime = new Date().getTime();
             const tapGap = currentTime - lastLogoClick;
-            
+
             if (tapGap < 300 && tapGap > 0) {
-                resetPin();
-                pinModal.classList.add('show');
+                openPinModal();
                 e.preventDefault();
             }
             lastLogoClick = currentTime;
@@ -685,22 +872,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navVibePlayer) {
         navVibePlayer.addEventListener('click', (e) => {
             e.preventDefault();
-            const existingPin = getCookie('music_auth');
-            if (existingPin) {
-                // Persistent session found - direct bypass
-                window.location.href = 'music';
-            } else {
-                resetPin();
-                pinModal.classList.add('show');
-            }
+            // Ask the server whether a valid session cookie exists
+            fetch('/api/session')
+                .then(r => r.json())
+                .then(({ authenticated }) => {
+                    if (authenticated) {
+                        window.location.href = 'music';
+                    } else {
+                        openPinModal();
+                    }
+                })
+                .catch(() => {
+                    openPinModal();
+                });
         });
     }
 
     if (pinCancel) {
-        pinCancel.addEventListener('click', () => {
-            pinModal.classList.remove('show');
-            resetPin();
-        });
+        pinCancel.addEventListener('click', closePinModal);
     }
 
     const handleKeyClick = (val) => {
@@ -730,14 +919,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pinModal || !pinModal.classList.contains('show')) return;
 
         if (e.key >= '0' && e.key <= '9') {
+            flashKey(e.key);
             handleKeyClick(e.key);
         } else if (e.key === 'Backspace') {
             pinValue = pinValue.slice(0, -1);
             if (pinInput) pinInput.value = pinValue;
             updateDots();
         } else if (e.key === 'Escape') {
-            pinModal.classList.remove('show');
-            resetPin();
+            closePinModal();
         }
     });
 
@@ -768,9 +957,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await resp.json();
 
             if (resp.ok && data.success) {
-                // Store the server-issued session token (never the raw PIN)
-                setCookie('music_auth', data.token, 30);
-                
+                // Server set the HttpOnly session cookie via Set-Cookie header
+                pinDotDisplay?.classList.add('granted');
+                if (pinError) {
+                    pinError.textContent = '✓ Access Granted';
+                    pinError.classList.add('ok');
+                }
                 showToast("Access Granted! Opening VibePlayer...");
                 setTimeout(() => {
                     window.location.href = 'music';
@@ -898,9 +1090,25 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const factDisplay = document.getElementById('fun-fact-text');
+    let currentFact = -1;
     if (factDisplay) {
-        const randomIndex = Math.floor(Math.random() * funFacts.length);
-        factDisplay.textContent = funFacts[randomIndex];
+        currentFact = Math.floor(Math.random() * funFacts.length);
+        factDisplay.textContent = funFacts[currentFact];
+    }
+
+    // Shuffle button: swap in a new fact with the scramble effect
+    const factShuffle = document.getElementById('fact-shuffle');
+    if (factShuffle && factDisplay) {
+        factShuffle.addEventListener('click', () => {
+            if (funFacts.length < 2) return;
+            let next = currentFact;
+            while (next === currentFact) {
+                next = Math.floor(Math.random() * funFacts.length);
+            }
+            currentFact = next;
+            factDisplay.setAttribute('data-original', funFacts[next]);
+            scrambleText(factDisplay);
+        });
     }
 
     // =============================================
@@ -1070,103 +1278,163 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // =============================================
     // FEATURE 14: DYNAMIC DOTTED GRID BACKGROUND
+    // Composited for speed: the static grid is painted ONCE to an
+    // offscreen canvas; interaction frames only blit that base and
+    // redraw the ~45 dots near the cursor — never the full grid.
     // =============================================
     (function() {
         const canvas = document.getElementById('dynamic-bg-grid');
         if (!canvas) return;
+
         const ctx = canvas.getContext('2d', { alpha: true });
-        
-        let width, height;
-        const spacing = 45; // Space between dots
-        const radius = 1.5; // Default dot radius
-        const interactionRadius = 150; // Mouse interaction distance
-        
-        let mouseX = -1000;
-        let mouseY = -1000;
+        const spacing = 45;             // Space between dots
+        const radius = 1.5;             // Default dot radius
+        const interactionRadius = 150;  // Mouse interaction distance
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+        let width = 0, height = 0;
+        let cols = 0, rows = 0;         // dot counts per axis
+        let mouseX = -9999, mouseY = -9999;
+        let rafId = null;
+        let baseValid = false;
+        let colors = null;
+
+        // Offscreen canvas holding the static grid
+        const base = document.createElement('canvas');
+        const baseCtx = base.getContext('2d');
+
+        const getColors = () => {
+            if (colors) return colors;
+            const style = getComputedStyle(document.body);
+            colors = {
+                dotColor: style.getPropertyValue('--text-muted').trim() || '#4D79FF',
+                highlightColor: style.getPropertyValue('--accent-base').trim() || '#0044CC'
+            };
+            return colors;
+        };
+
+        function paintBase() {
+            base.width  = canvas.width;
+            base.height = canvas.height;
+            baseCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            baseCtx.clearRect(0, 0, width, height);
+            baseCtx.fillStyle = getColors().dotColor;
+            baseCtx.globalAlpha = 0.25; // Base low opacity for the grid
+            for (let ix = 0; ix <= cols; ix++) {
+                for (let iy = 0; iy <= rows; iy++) {
+                    baseCtx.beginPath();
+                    baseCtx.arc(spacing / 2 + ix * spacing, spacing / 2 + iy * spacing, radius, 0, Math.PI * 2);
+                    baseCtx.fill();
+                }
+            }
+            baseCtx.globalAlpha = 1;
+            baseValid = true;
+        }
+
+        function render() {
+            rafId = null;
+            if (!baseValid) paintBase();
+
+            // 1. Blit the pre-rendered static grid
+            ctx.clearRect(0, 0, width, height);
+            ctx.drawImage(base, 0, 0, width, height);
+
+            // 2. Redraw only the dots inside the cursor's interaction box
+            if (mouseX > -999) {
+                const R = interactionRadius;
+                const kMinX = Math.max(0, Math.ceil((mouseX - R - spacing / 2) / spacing));
+                const kMaxX = Math.min(cols, Math.floor((mouseX + R - spacing / 2) / spacing));
+                const kMinY = Math.max(0, Math.ceil((mouseY - R - spacing / 2) / spacing));
+                const kMaxY = Math.min(rows, Math.floor((mouseY + R - spacing / 2) / spacing));
+
+                ctx.fillStyle = getColors().highlightColor;
+                for (let ix = kMinX; ix <= kMaxX; ix++) {
+                    for (let iy = kMinY; iy <= kMaxY; iy++) {
+                        const x = spacing / 2 + ix * spacing;
+                        const y = spacing / 2 + iy * spacing;
+                        const dx = mouseX - x;
+                        const dy = mouseY - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist >= R) continue;
+
+                        const force = (R - dist) / R; // 0 to 1
+                        const pushForce = force * 12;
+
+                        ctx.globalAlpha = 0.25 + force * 0.75;
+                        ctx.beginPath();
+                        ctx.arc(
+                            x - (dist > 0 ? (dx / dist) * pushForce : 0),
+                            y - (dist > 0 ? (dy / dist) * pushForce : 0),
+                            radius + force * 2.5,
+                            0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Only repaint when something actually changed (mouse moved, theme
+        // flipped, or the canvas was resized). Idle = zero frames rendered.
+        function requestRender() {
+            if (rafId === null) rafId = requestAnimationFrame(render);
+        }
 
         const resize = () => {
-            width = window.innerWidth;
+            width  = window.innerWidth;
             height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width  = Math.round(width * DPR);
+            canvas.height = Math.round(height * DPR);
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            cols = Math.floor((width - spacing / 2) / spacing);
+            rows = Math.floor((height - spacing / 2) / spacing);
+            baseValid = false;
+            requestRender();
         };
-        
-        window.addEventListener('resize', resize);
+
+        // Theme flips invalidate the cached colors AND the pre-rendered base
+        const refreshTheme = () => { colors = null; baseValid = false; requestRender(); };
+        new MutationObserver(refreshTheme)
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        window.addEventListener('load', refreshTheme);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) requestRender(); // repaint after tab return
+        });
+
+        window.addEventListener('resize', resize, { passive: true });
         resize();
+
+        if (REDUCED_MOTION) {
+            // Static grid, no cursor interaction — still looks intentional
+            requestRender();
+            return;
+        }
 
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
-        });
+            requestRender();
+        }, { passive: true });
 
         window.addEventListener('mouseout', () => {
-            mouseX = -1000;
-            mouseY = -1000;
+            mouseX = -9999;
+            mouseY = -9999;
+            requestRender();
         });
-
-        const getColors = () => {
-            const style = getComputedStyle(document.body);
-            const dotColor = style.getPropertyValue('--text-muted').trim() || '#4D79FF';
-            const highlightColor = style.getPropertyValue('--accent-base').trim() || '#0044CC';
-            return { dotColor, highlightColor };
-        };
-
-        const render = () => {
-            ctx.clearRect(0, 0, width, height);
-            const { dotColor, highlightColor } = getColors();
-
-            for (let x = spacing / 2; x < width; x += spacing) {
-                for (let y = spacing / 2; y < height; y += spacing) {
-                    let dx = mouseX - x;
-                    let dy = mouseY - y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    let drawX = x;
-                    let drawY = y;
-                    let drawRadius = radius;
-                    let currentFill = dotColor;
-                    let opacity = 0.25; // Base low opacity for the grid
-
-                    if (dist < interactionRadius) {
-                        const force = (interactionRadius - dist) / interactionRadius; // 0 to 1
-                        
-                        // Push dot away from mouse
-                        const pushForce = force * 12;
-                        if (dist > 0) {
-                            drawX -= (dx / dist) * pushForce;
-                            drawY -= (dy / dist) * pushForce;
-                        }
-                        
-                        // Grow dot and shift color
-                        drawRadius = radius + (force * 2.5);
-                        opacity = 0.25 + (force * 0.75); // Scales to 1.0
-                        currentFill = highlightColor;
-                    }
-
-                    ctx.globalAlpha = opacity;
-                    ctx.fillStyle = currentFill;
-                    ctx.beginPath();
-                    ctx.arc(drawX, drawY, drawRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            requestAnimationFrame(render);
-        };
-
-        render();
     })();
 
     // =============================================
-    // FEATURE 15: TERMINAL "NEOFETCH" CARD
+    // FEATURE 15: TERMINAL "NEOFETCH" CARD + INTERACTIVE SHELL
     // =============================================
     (function() {
         const terminalCard = document.getElementById('arch-terminal');
         const cmdEl = document.querySelector('.type-cmd');
         const outputEl = document.getElementById('arch-output');
         const prompt2El = document.getElementById('arch-prompt-2');
+        const inputEl = document.getElementById('arch-input');
 
-        if (!terminalCard || !cmdEl || !outputEl || !prompt2El) return;
+        if (!terminalCard || !cmdEl || !outputEl || !prompt2El || !inputEl) return;
 
         const cmdText = "./status.sh";
         const outputText = `OS: Arch Linux x86_64
@@ -1199,6 +1467,79 @@ Theme: Hybrid Brutalism
         const showOutput = () => {
             outputEl.textContent = outputText;
             prompt2El.classList.remove('hidden-prompt');
+            initShell();
+        };
+
+        // ---- Interactive shell ----
+        const PROJECTS = [
+            'kizamu_sanctuary.exe', 'math_titan.sh', 'amixi_sentinel.py',
+            'armchat_oasis.bin', 'sdm660_kernel_source.c'
+        ];
+        const WIP = ['qr_matrix_encoder.js', 'packet_sniffer_cli.go'];
+        const history = [];
+        let historyIdx = -1;
+
+        const termPrint = (text) => {
+            outputEl.textContent += (outputEl.textContent ? '\n' : '') + text;
+            const body = terminalCard.querySelector('.terminal-body');
+            if (body) body.scrollTop = body.scrollHeight;
+        };
+
+        const runCommand = (raw) => {
+            const cmd = raw.trim();
+            if (!cmd) return;
+            history.unshift(cmd);
+            historyIdx = -1;
+
+            const c = cmd.toLowerCase();
+            if (c === 'help') {
+                termPrint('available: help · whoami · ls · clear · sudo hire-me');
+            } else if (c === 'whoami') {
+                termPrint('visitor — welcome. the arch wizard around here is armaan.');
+            } else if (c === 'ls' || c === 'ls projects' || c === 'ls -la') {
+                termPrint(PROJECTS.join('\n') + '\n\nunder_development/:\n' + WIP.map(w => w + '  (in dev)').join('\n'));
+            } else if (c === 'ls wip' || c === 'ls under_development') {
+                termPrint(WIP.join('\n'));
+            } else if (c === 'clear') {
+                outputEl.textContent = '';
+            } else if (c === 'sudo hire-me' || c === 'sudo make me a sandwich') {
+                termPrint('permission granted ✓');
+                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+            } else if (c.startsWith('sudo')) {
+                termPrint('visitor is not in the sudoers file. this incident will be reported.');
+            } else if (c === 'rm -rf /' || c === 'rm -rf /*') {
+                termPrint('nice try. this terminal is read-only for a reason.');
+            } else if (c.startsWith('cd')) {
+                termPrint('nowhere to go — everything worth seeing is on this page.');
+            } else if (c === 'uname -a' || c === 'neofetch') {
+                termPrint(outputText.split('\n').slice(0, 7).join('\n'));
+            } else {
+                termPrint(`bash: ${cmd}: command not found — try 'help'`);
+            }
+        };
+
+        const initShell = () => {
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    runCommand(inputEl.value);
+                    inputEl.value = '';
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (history.length) {
+                        historyIdx = Math.min(historyIdx + 1, history.length - 1);
+                        inputEl.value = history[historyIdx];
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    historyIdx = Math.max(historyIdx - 1, -1);
+                    inputEl.value = historyIdx === -1 ? '' : history[historyIdx];
+                }
+            });
+
+            // Click anywhere on the card focuses the input (unless selecting text)
+            terminalCard.addEventListener('click', () => {
+                if (!window.getSelection().toString()) inputEl.focus({ preventScroll: true });
+            });
         };
 
         // Use IntersectionObserver to trigger when scrolled into view
@@ -1225,44 +1566,81 @@ Theme: Hybrid Brutalism
         if (!titleEl || !statsEl) return;
 
         const GITHUB_USERNAME = 'BlueTheBoss';
-        
+        const CACHE_KEY = 'gh_lang_stats_v1';
+        const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
+        const readCache = () => {
+            try {
+                const raw = localStorage.getItem(CACHE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch { return null; }
+        };
+
+        const renderStats = (repos) => {
+            const langCounts = {};
+            let totalRepos = 0;
+
+            repos.forEach(repo => {
+                if (repo.language && !repo.fork) {
+                    langCounts[repo.language] = (langCounts[repo.language] || 0) + 1;
+                    totalRepos++;
+                }
+            });
+
+            const sortedLangs = Object.entries(langCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3); // Top 3
+
+            if (sortedLangs.length >= 2) {
+                titleEl.textContent = `${sortedLangs[0][0]} & ${sortedLangs[1][0]}`;
+            } else if (sortedLangs.length === 1) {
+                titleEl.textContent = sortedLangs[0][0];
+            }
+
+            let statsHtml = '';
+            sortedLangs.forEach(([lang, count]) => {
+                const percentage = Math.round((count / totalRepos) * 100);
+                const filled = Math.ceil(percentage / 10);
+                // ASCII bars that fill in left-to-right when rendered
+                const segs = Array.from({ length: 10 }, (_, i) =>
+                    `<span class="bar-seg${i < filled ? ' on' : ''}" style="--d:${i * 70}ms">${i < filled ? '█' : '░'}</span>`
+                ).join('');
+                statsHtml += `<div>${lang.padEnd(10, ' ')} ${segs} ${percentage}%</div>`;
+            });
+
+            statsEl.innerHTML = statsHtml || '<div>No language data found.</div>';
+        };
+
+        // Serve from cache when fresh — spares the unauthenticated API
+        // quota (60 req/hr/IP) and makes repeat visits instant.
+        const cached = readCache();
+        if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+            renderStats(cached.repos);
+            return;
+        }
+
         fetch(`https://api.github.com/users/${GITHUB_USERNAME}/repos?sort=updated&per_page=100`)
             .then(res => {
                 if (!res.ok) throw new Error('API Rate Limit or Error');
                 return res.json();
             })
+            .then(repos =>
+                // Keep only what we need so the localStorage entry stays tiny
+                repos.map(r => ({ language: r.language, fork: r.fork }))
+            )
             .then(repos => {
-                const langCounts = {};
-                let totalRepos = 0;
-                
-                repos.forEach(repo => {
-                    if (repo.language && !repo.fork) {
-                        langCounts[repo.language] = (langCounts[repo.language] || 0) + 1;
-                        totalRepos++;
-                    }
-                });
-
-                const sortedLangs = Object.entries(langCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3); // Top 3
-
-                if (sortedLangs.length >= 2) {
-                    titleEl.textContent = `${sortedLangs[0][0]} & ${sortedLangs[1][0]}`;
-                } else if (sortedLangs.length === 1) {
-                    titleEl.textContent = sortedLangs[0][0];
-                }
-
-                let statsHtml = '';
-                sortedLangs.forEach(([lang, count]) => {
-                    const percentage = Math.round((count / totalRepos) * 100);
-                    let bar = '█'.repeat(Math.ceil(percentage / 10));
-                    bar += '░'.repeat(10 - Math.ceil(percentage / 10));
-                    statsHtml += `<div>${lang.padEnd(10, ' ')} ${bar} ${percentage}%</div>`;
-                });
-
-                statsEl.innerHTML = statsHtml || '<div>No language data found.</div>';
+                try {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), repos }));
+                } catch { /* storage full/blocked — non-fatal */ }
+                renderStats(repos);
             })
             .catch(err => {
+                // Rate-limited or offline: fall back to stale cache if we have one
+                const stale = cached || readCache();
+                if (stale) {
+                    renderStats(stale.repos);
+                    return;
+                }
                 titleEl.textContent = "Java & Python";
                 statsEl.innerHTML = "<div>Error connecting to GitHub.</div>";
             });
@@ -1270,6 +1648,7 @@ Theme: Hybrid Brutalism
 
     // =============================================
     // FEATURE 17: FILING CABINET ACCORDION
+    // (height animation handled purely by CSS grid-template-rows)
     // =============================================
     (function() {
         const folders = document.querySelectorAll('.folder-item');
@@ -1277,22 +1656,53 @@ Theme: Hybrid Brutalism
 
         folders.forEach(folder => {
             const tab = folder.querySelector('.folder-tab');
-            const content = folder.querySelector('.folder-content');
-
             tab.addEventListener('click', () => {
                 const isActive = folder.classList.contains('active');
-                
+
                 // Close all folders
-                folders.forEach(f => {
-                    f.classList.remove('active');
-                    f.querySelector('.folder-content').style.maxHeight = null;
-                });
+                folders.forEach(f => f.classList.remove('active'));
 
                 // If it wasn't active before, open it
-                if (!isActive) {
-                    folder.classList.add('active');
-                    content.style.maxHeight = content.scrollHeight + "px";
-                }
+                if (!isActive) folder.classList.add('active');
+            });
+        });
+    })();
+
+    // =============================================
+    // FEATURE 17b: DIRECTORY ROWS — hover preview + EXECUTE flash
+    // =============================================
+    (function() {
+        const rows = document.querySelectorAll('.directory-list .dir-row');
+        if (!rows.length) return;
+
+        rows.forEach(row => {
+            const nameEl = row.querySelector('.dir-name');
+            const header = row.querySelector('.dir-header');
+            if (!nameEl || !header) return;
+
+            // Terminal-style preview line: > cat <file>
+            const preview = document.createElement('div');
+            preview.className = 'dir-preview';
+            preview.setAttribute('aria-hidden', 'true');
+            preview.textContent = '> cat ' + nameEl.textContent.trim().toLowerCase();
+            header.after(preview);
+        });
+
+        // [EXECUTE_FILE] buttons flash a "running" state before opening
+        document.querySelectorAll('.dir-execute-btn:not(.disabled)').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (!btn.href || btn.classList.contains('running')) return;
+                // Must run inside the gesture — async window.open gets popup-blocked
+                const win = window.open(btn.href, '_blank', 'noopener');
+                if (!win) return; // Popup blocked: fall through so the browser follows the link
+                e.preventDefault();
+                const original = btn.textContent;
+                btn.classList.add('running');
+                btn.textContent = '[ RUNNING... ]';
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.classList.remove('running');
+                }, 500);
             });
         });
     })();
@@ -1311,6 +1721,8 @@ Theme: Hybrid Brutalism
         let seconds = 12;
 
         setInterval(() => {
+            if (document.hidden) return; // Don't churn in background tabs
+
             seconds++;
             if (seconds >= 60) {
                 seconds = 0;
@@ -1332,6 +1744,38 @@ Theme: Hybrid Brutalism
 
             uptimeEl.textContent = `${d}:${h}:${m}:${s}`;
         }, 1000);
+    })();
+
+    // =============================================
+    // FEATURE 19: 404 TERMINAL TYPING
+    // =============================================
+    (function() {
+        const cmdEl = document.getElementById('err-cmd');
+        if (!cmdEl) return; // only on the 404 page
+
+        const output = document.getElementById('err-output');
+        const suggest = document.getElementById('err-suggest');
+        const cmd = 'visit /page-that-does-not-exist';
+
+        const revealAll = () => {
+            output?.classList.add('shown');
+            setTimeout(() => suggest?.classList.add('shown'), 450);
+        };
+
+        if (REDUCED_MOTION) {
+            cmdEl.textContent = cmd;
+            revealAll();
+            return;
+        }
+
+        let i = 0;
+        const typer = setInterval(() => {
+            cmdEl.textContent = cmd.slice(0, ++i);
+            if (i >= cmd.length) {
+                clearInterval(typer);
+                setTimeout(revealAll, 400);
+            }
+        }, 55);
     })();
 
     // Glitch Mode — Removed
