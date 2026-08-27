@@ -1,0 +1,79 @@
+---
+import { marked } from 'marked';
+import VaultLayout from '../../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../../lib/requireAuth';
+import { readVaultText, NOTE_DIR, slugify } from '../../../lib/vault';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+
+// Slug must round-trip through slugify — anything else is a bad request
+const raw = Astro.params.slug || '';
+const slug = slugify(raw);
+if (!slug || slug !== raw) return Astro.redirect('/vault/notes', 302);
+
+let html = '';
+let modified = '';
+let loadError: string | null = null;
+try {
+    const dbx = await import('../../../lib/dropbox').then(m => m.getDbx());
+    const meta = await dbx.filesGetMetadata({ path: `${NOTE_DIR}/${slug}.md` } as any);
+    modified = (meta.result as any).server_modified
+        ? new Date((meta.result as any).server_modified).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+        : '';
+    const md = await readVaultText(`${NOTE_DIR}/${slug}.md`);
+    html = await marked.parse(md);
+} catch (err: any) {
+    loadError = err.message;
+}
+---
+
+<VaultLayout title={loadError ? 'Notes' : slug} active="notes" expiresAt={auth.expiresAt}>
+    {loadError ? (
+        <div class="vault-empty">
+            <p>[ READ ERROR ]</p>
+            <p>{loadError}</p>
+            <a href="/vault/notes" class="vault-link" style="display:inline-block;margin-top:1rem;">← back to notes</a>
+        </div>
+    ) : (
+        <>
+            <div class="vault-status">
+                <div class="vault-stat">
+                    <span class="k">[ FILE ]</span>
+                    <span class="v">notes/{slug}.md</span>
+                </div>
+                <div class="vault-stat">
+                    <span class="k">[ MODIFIED ]</span>
+                    <span class="v">{modified || '—'}</span>
+                </div>
+            </div>
+
+            <article class="vault-md" set:html={html} />
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                <a href={`/vault/notes/edit?slug=${slug}`} class="vault-btn">[ ✎ EDIT ]</a>
+                <button id="note-delete" class="vault-btn danger" data-slug={slug} type="button">[ ✕ DELETE ]</button>
+                <a href="/vault/notes" class="vault-btn ghost">[ ← NOTES ]</a>
+            </div>
+        </>
+    )}
+
+    <script>
+        document.getElementById('note-delete')?.addEventListener('click', async (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            const slug = btn.dataset.slug;
+            if (!slug || !confirm(`Delete note "${slug}"? This cannot be undone.`)) return;
+            btn.disabled = true;
+            const res = await fetch(`/api/vault/notes?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+            if (res.ok) {
+                window.location.href = '/vault/notes';
+            } else {
+                const { error } = await res.json().catch(() => ({ error: 'Delete failed' }));
+                (window as any).__vaultToast(error, 'error');
+                btn.disabled = false;
+            }
+        });
+    </script>
+</VaultLayout>

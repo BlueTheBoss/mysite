@@ -1,0 +1,84 @@
+---
+import VaultLayout from '../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../lib/requireAuth';
+import { readVaultText, NOTE_DIR, slugify } from '../../lib/vault';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+
+const slugParam = slugify(Astro.url.searchParams.get('slug') || '');
+
+let title = '';
+let content = '';
+if (slugParam) {
+    try {
+        const md = await readVaultText(`${NOTE_DIR}/${slugParam}.md`);
+        // Split the stored "# Title" heading back into separate fields
+        const lines = md.split('\n');
+        if (lines[0]?.startsWith('# ')) {
+            title = lines[0].slice(2).trim();
+            content = lines.slice(1).join('\n').replace(/^\s+/, '');
+        } else {
+            content = md;
+        }
+    } catch {
+        // Editing a note that doesn't exist yet — treat as new
+    }
+}
+---
+
+<VaultLayout title={slugParam ? `Edit: ${slugParam}` : 'New Note'} active="notes" expiresAt={auth.expiresAt}>
+    <form id="note-form" class="vault-form">
+        <input type="hidden" name="slug" value={slugParam} />
+        <input
+            id="note-title"
+            class="vault-input"
+            name="title"
+            placeholder="Note title…"
+            maxlength="120"
+            required
+            value={title}
+        />
+        <textarea
+            id="note-content"
+            class="vault-textarea"
+            name="content"
+            placeholder="# markdown supported&#10;&#10;Write anything. This never leaves your Dropbox."
+        >{content}</textarea>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="submit" class="vault-btn" id="note-save">[ ▤ SAVE_NOTE ]</button>
+            <a href={slugParam ? `/vault/notes/${slugParam}` : '/vault/notes'} class="vault-btn ghost">[ ← CANCEL ]</a>
+        </div>
+    </form>
+
+    <script>
+        const form = document.getElementById('note-form') as HTMLFormElement;
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('note-save') as HTMLButtonElement;
+            const fd = new FormData(form);
+            btn.disabled = true;
+            btn.textContent = '[ SAVING... ]';
+            try {
+                const res = await fetch('/api/vault/notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        slug: fd.get('slug') || undefined,
+                        title: fd.get('title'),
+                        content: fd.get('content'),
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Save failed');
+                window.location.href = `/vault/notes/${data.slug}`;
+            } catch (err: any) {
+                (window as any).__vaultToast(err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '[ ▤ SAVE_NOTE ]';
+            }
+        });
+    </script>
+</VaultLayout>

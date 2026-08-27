@@ -1,16 +1,60 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
+import { listVaultDir, NOTE_DIR, type VaultEntry } from '../../lib/vault';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
+
+// Notes listing fails soft: storage offline (missing creds, scope error)
+// shows a status card instead of crashing the dashboard.
+let notes: VaultEntry[] = [];
+let storageError: string | null = null;
+const wantFresh = Astro.url.searchParams.has('refresh');
+try {
+    notes = (await listVaultDir(NOTE_DIR, { fresh: wantFresh }))
+        .filter(e => e.name.toLowerCase().endsWith('.md'))
+        .sort((a, b) => (b.server_modified || '').localeCompare(a.server_modified || ''));
+} catch (err: any) {
+    storageError = err.message;
+}
+
+const titleOf = (filename: string) => filename.replace(/\.md$/i, '').replace(/-/g, ' ');
+const fmtDate = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 ---
 
 <VaultLayout title="Notes" active="notes" expiresAt={auth.expiresAt}>
-    <div class="vault-empty">
-        <p>[ NOTES MODULE :: STANDBY ]</p>
-        <p>markdown storage comes online in phase 4 — dropbox/notes/</p>
+    {storageError ? (
+        <div class="vault-empty">
+            <p>[ STORAGE OFFLINE ]</p>
+            <p>{storageError}</p>
+        </div>
+    ) : notes.length === 0 ? (
+        <div class="vault-empty">
+            <p>[ EMPTY DIRECTORY :: 0 ENTRIES ]</p>
+            <p>no notes yet — write the first one</p>
+        </div>
+    ) : (
+        <div class="vault-list">
+            {notes.map(n => (
+                <a class="vault-row" href={`/vault/notes/${n.name.replace(/\.md$/i, '')}`}>
+                    <div class="vr-main">
+                        <div class="vr-title">{titleOf(n.name)}</div>
+                        <div class="vr-meta">
+                            {n.path_lower} · modified {fmtDate(n.server_modified)}
+                        </div>
+                    </div>
+                    <span class="vr-meta">$ cat →</span>
+                </a>
+            ))}
+        </div>
+    )}
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+        <a href="/vault/notes/edit" class="vault-btn">[ + NEW_NOTE ]</a>
+        <a href="/vault/notes/edit?refresh=1" class="vault-btn ghost">[ $ ls --fresh ]</a>
     </div>
 </VaultLayout>
