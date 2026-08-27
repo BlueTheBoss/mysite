@@ -1,0 +1,92 @@
+---
+// Shared page shell. All pages were flat HTML before the Astro migration —
+// this layout centralizes the <head>, favicon, font preloads and cursor div.
+// Pages customize via props; anything unusual goes through the `head` slot.
+interface Props {
+    title: string;
+    description?: string;
+    noindex?: boolean;
+    // When set, emits the full OG + Twitter card block
+    ogImage?: string;
+    // data-theme on <html> (e.g. "dark"); unset = script decides on load
+    theme?: string;
+    bodyClass?: string;
+    fonts?: 'all' | 'grotesk';
+    favicon?: 'portfolio' | 'player';
+    // e.g. "/assets/pfp.webp" — LCP preload
+    preloadImage?: string;
+    appleTouch?: boolean;
+    css?: string[];
+}
+
+const {
+    title,
+    description = '',
+    noindex = false,
+    ogImage,
+    theme,
+    bodyClass,
+    fonts = 'all',
+    favicon = 'portfolio',
+    preloadImage,
+    appleTouch = false,
+    css = [],
+} = Astro.props;
+
+const SITE_URL = 'https://armevox.vercel.app';
+
+const FAVICONS = {
+    portfolio: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='30' fill='%230D1824'/%3E%3Cpath fill='%235B8DB8' d='M50 20 L58 42 L80 50 L58 58 L50 80 L42 58 L20 50 L42 42 Z'/%3E%3C/svg%3E",
+    player: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230D1824'/%3E%3Cpath fill='%235B8DB8' d='M35 25h30v40c0 5.5-4.5 10-10 10s-10-4.5-10-10 4.5-10 10-10v-25h-20v25c0 5.5-4.5 10-10 10s-10-4.5-10-10 4.5-10 10-10v-30z'/%3E%3C/svg%3E",
+};
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme={theme}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {noindex && <meta name="robots" content="noindex">}
+
+    {ogImage && (
+        <>
+            <!-- Open Graph / Facebook -->
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content={SITE_URL} />
+            <meta property="og:title" content={title} />
+            <meta property="og:description" content={description} />
+            <meta property="og:image" content={`${SITE_URL}${ogImage}`} />
+
+            <!-- Twitter -->
+            <meta property="twitter:card" content="summary_large_image" />
+            <meta property="twitter:url" content={SITE_URL} />
+            <meta property="twitter:title" content={title} />
+            <meta property="twitter:description" content={description} />
+            <meta property="twitter:image" content={`${SITE_URL}${ogImage}`} />
+        </>
+    )}
+
+    <!-- Fonts (self-hosted) -->
+    <link rel="preload" href="/assets/fonts/space-grotesk-var-latin.woff2" as="font" type="font/woff2" crossorigin />
+    {fonts === 'all' && (
+        <link rel="preload" href="/assets/fonts/anton-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+    )}
+    <link rel="stylesheet" href="/fonts.css" />
+
+    {preloadImage && (
+        <link rel="preload" href={preloadImage} as="image" type="image/webp" fetchpriority="high" />
+    )}
+
+    {appleTouch && <link rel="apple-touch-icon" sizes="180x180" href="/assets/pfp.jpg" />}
+    <link rel="icon" type="image/svg+xml" href={FAVICONS[favicon]} />
+
+    {css.map((href) => <link rel="stylesheet" href={href} />)}
+    <slot name="head" />
+</head>
+<body class={bodyClass || undefined}>
+    <div class="custom-cursor"></div>
+    <slot />
+</body>
+</html>
