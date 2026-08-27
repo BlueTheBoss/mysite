@@ -805,9 +805,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pinError = document.getElementById('pin-error');
     const keyButtons = document.querySelectorAll('.key-btn[data-val]');
     const keyClear = document.getElementById('key-clear');
+    const pinModalContent = pinModal ? pinModal.querySelector('.pin-modal-content') : null;
+    const pinDestination = document.getElementById('pin-destination');
     
     let lastLogoClick = 0;
     let pinValue = '';
+    let pendingDest = '/music';
+    let authenticated = false;
 
     const getDots = () => pinDotDisplay ? pinDotDisplay.querySelectorAll('.pin-dot') : [];
 
@@ -825,6 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pinValue = '';
         if (pinInput) pinInput.value = '';
         updateDots();
+        if (pinModalContent) pinModalContent.classList.remove('state-keypad');
         if (pinError) {
             pinError.textContent = '';
             pinError.classList.remove('ok');
@@ -834,11 +839,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Centralized open/close with focus management for keyboard users
+    const showKeypad = () => {
+        if (pinModalContent) pinModalContent.classList.add('state-keypad');
+        setTimeout(() => keyButtons[0]?.focus({ preventScroll: true }), 30);
+    };
+
+    // Centralized open/close with focus management for keyboard users.
+    // Always shows the destination menu first.
     const openPinModal = () => {
         resetPin();
         pinModal.classList.add('show');
-        setTimeout(() => keyButtons[0]?.focus({ preventScroll: true }), 30);
+        // Ask the server whether a valid session cookie exists so the menu
+        // can skip the PIN step when already unlocked.
+        authenticated = false;
+        fetch('/api/session')
+            .then(r => r.json())
+            .then(({ authenticated: ok }) => { authenticated = !!ok; })
+            .catch(() => { authenticated = false; });
+        setTimeout(() => {
+            const firstDest = pinDestination?.querySelector('[data-dest]');
+            if (firstDest instanceof HTMLElement) firstDest.focus({ preventScroll: true });
+        }, 30);
     };
 
     const closePinModal = () => {
@@ -872,19 +893,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navVibePlayer) {
         navVibePlayer.addEventListener('click', (e) => {
             e.preventDefault();
-            // Ask the server whether a valid session cookie exists
-            fetch('/api/session')
-                .then(r => r.json())
-                .then(({ authenticated }) => {
-                    if (authenticated) {
-                        window.location.href = 'music';
-                    } else {
-                        openPinModal();
-                    }
-                })
-                .catch(() => {
-                    openPinModal();
-                });
+            // Every click opens the destination menu (auth check happens there)
+            openPinModal();
         });
     }
 
@@ -912,6 +922,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (keyClear) {
         keyClear.addEventListener('click', resetPin);
+    }
+
+    // Destination menu: pick where to go. Unlock first if not authenticated.
+    pinDestination?.querySelectorAll('[data-dest]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const dest = btn.getAttribute('data-dest');
+            if (!dest) return;
+            if (authenticated) {
+                window.location.href = dest;
+            } else {
+                pendingDest = dest;
+                showKeypad();
+                if (pinError) {
+                    pinError.textContent = 'ENTER PIN TO UNLOCK';
+                    pinError.classList.remove('ok');
+                }
+            }
+        });
+    });
+
+    // Back from the keypad to the destination menu
+    const pinBack = document.getElementById('pin-back');
+    if (pinBack) {
+        pinBack.addEventListener('click', () => {
+            pendingDest = '/music';
+            resetPin();
+            const firstDest = pinDestination?.querySelector('[data-dest]');
+            if (firstDest instanceof HTMLElement) firstDest.focus({ preventScroll: true });
+        });
     }
 
     // Keyboard support for PIN Pad
@@ -963,10 +1002,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     pinError.textContent = '✓ Access Granted';
                     pinError.classList.add('ok');
                 }
-                showToast("Access Granted! Opening VibePlayer...");
+                showToast("Access Granted!");
                 setTimeout(() => {
-                    window.location.href = 'music';
-                }, 900);
+                    window.location.href = pendingDest || '/music';
+                }, 700);
             } else {
                 throw new Error(data.message || "Invalid PIN");
             }

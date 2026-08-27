@@ -502,31 +502,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 </div>
             </div>
 
-            <div class="pin-display" id="pin-dot-display">
-                <span class="pin-dot" id="dot-0"></span>
-                <span class="pin-dot" id="dot-1"></span>
-                <span class="pin-dot" id="dot-2"></span>
-                <span class="pin-dot" id="dot-3"></span>
-            </div>
-            <!-- Hidden input still used to track value in JS -->
-            <input type="hidden" id="pin-input" maxlength="4" />
-
-            <div class="keypad-grid">
-                <button class="key-btn" data-val="1">1</button>
-                <button class="key-btn" data-val="2">2</button>
-                <button class="key-btn" data-val="3">3</button>
-                <button class="key-btn" data-val="4">4</button>
-                <button class="key-btn" data-val="5">5</button>
-                <button class="key-btn" data-val="6">6</button>
-                <button class="key-btn" data-val="7">7</button>
-                <button class="key-btn" data-val="8">8</button>
-                <button class="key-btn" data-val="9">9</button>
-                <button class="key-btn clear" id="key-clear" aria-label="Clear">C</button>
-                <button class="key-btn" data-val="0">0</button>
-                <button class="key-btn cancel" id="pin-cancel" aria-label="Cancel">×</button>
+            <!-- Screen 1: where to? (shown every time the secret button is clicked) -->
+            <div id="pin-destination" class="pin-destination">
+                <p class="pin-dest-title">WHERE TO?</p>
+                <div class="pin-dest-actions">
+                    <button class="dest-btn" type="button" data-dest="/vault">VAULT</button>
+                    <button class="dest-btn alt" type="button" data-dest="/music">VIBEPLAYER</button>
+                </div>
+                <p class="pin-dest-sub">PIN UNLOCK REQUIRED IF NOT ALREADY AUTHENTICATED</p>
             </div>
 
-            <p id="pin-error" class="pin-error-msg" role="alert" aria-live="polite"></p>
+            <!-- Screen 2: PIN keypad (revealed after a destination is picked) -->
+            <div class="pin-keypad-screen" id="pin-keypad-screen">
+                <div class="pin-display" id="pin-dot-display">
+                    <span class="pin-dot" id="dot-0"></span>
+                    <span class="pin-dot" id="dot-1"></span>
+                    <span class="pin-dot" id="dot-2"></span>
+                    <span class="pin-dot" id="dot-3"></span>
+                </div>
+                <!-- Hidden input still used to track value in JS -->
+                <input type="hidden" id="pin-input" maxlength="4" />
+
+                <div class="keypad-grid">
+                    <button class="key-btn" data-val="1">1</button>
+                    <button class="key-btn" data-val="2">2</button>
+                    <button class="key-btn" data-val="3">3</button>
+                    <button class="key-btn" data-val="4">4</button>
+                    <button class="key-btn" data-val="5">5</button>
+                    <button class="key-btn" data-val="6">6</button>
+                    <button class="key-btn" data-val="7">7</button>
+                    <button class="key-btn" data-val="8">8</button>
+                    <button class="key-btn" data-val="9">9</button>
+                    <button class="key-btn clear" id="key-clear" aria-label="Clear">C</button>
+                    <button class="key-btn" data-val="0">0</button>
+                    <button class="key-btn cancel" id="pin-cancel" aria-label="Cancel">×</button>
+                </div>
+
+                <p id="pin-error" class="pin-error-msg" role="alert" aria-live="polite"></p>
+                <button type="button" class="pin-back" id="pin-back">‹ BACK TO MENU</button>
+            </div>
         </div>
     </div>
     <!-- SVG Filter for Wobble Effect -->
