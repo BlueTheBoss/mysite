@@ -19,7 +19,7 @@ const fmt = (ms: number) => {
 const daysLeft = Math.max(0, Math.round((expiresAt - Date.now()) / 86_400_000));
 ---
 
-<BaseLayout title={`${title} // VAULT`} noindex theme="dark" fonts="grotesk" cursor={false} css={['/style.css', '/vault.css']}>
+<BaseLayout title={`${title} // VAULT`} noindex theme="dark" fonts="grotesk" cursor={false} track={false} css={['/style.css', '/vault.css']}>
     <div class="vault-page">
         <header class="vault-header">
             <a href="/vault" class="vault-brand">

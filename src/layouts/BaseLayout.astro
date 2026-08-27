@@ -19,6 +19,8 @@ interface Props {
     css?: string[];
     // Pages without script.js have no cursor JS — omit the div there
     cursor?: boolean;
+    // Public pages fire the ops page-view beacon; vault pages opt out
+    track?: boolean;
 }
 
 const {
@@ -34,6 +36,7 @@ const {
     appleTouch = false,
     css = [],
     cursor = true,
+    track = true,
 } = Astro.props;
 
 const SITE_URL = 'https://armevox.vercel.app';
@@ -91,5 +94,19 @@ const FAVICONS = {
 <body class={bodyClass || undefined}>
     {cursor && <div class="custom-cursor"></div>}
     <slot />
+    {track && (
+        <script is:inline>
+            // Page-view beacon for the private ops panel (public pages only).
+            // Same-origin, fire-and-forget; silently ignored when storage is off.
+            try {
+                fetch('/api/vault/track', {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: location.pathname }),
+                }).catch(() => {});
+            } catch {}
+        </script>
+    )}
 </body>
 </html>

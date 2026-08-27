@@ -1,16 +1,177 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
+import {
+    listVaultDir,
+    readVaultJson,
+    OPS_CONTACT_DIR,
+    OPS_VISITS_DIR,
+    type VaultEntry,
+} from '../../lib/vault';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
+
+// Module-level 60s cache — the ops page reads ~dozens of small files per
+// render; keep it cheap for repeated views.
+const cache = (globalThis as any).__opsCache ?? ((globalThis as any).__opsCache = { at: 0, data: null });
+const OPS_CACHE_TTL = 60_000;
+
+interface ContactEntry {
+    file: string;
+    ts: string;
+    name: string;
+    email: string;
+    message: string;
+    honeypot: boolean;
+    ip: string;
+}
+
+interface OpsData {
+    contacts: ContactEntry[];
+    contactTotal: number;
+    visitsByDay: { day: string; total: number; paths: Record<string, number> }[];
+    error: string | null;
+}
+
+async function loadOps(fresh = false): Promise<OpsData> {
+    if (!fresh && cache.data && Date.now() - cache.at < OPS_CACHE_TTL) return cache.data;
+
+    const data: OpsData = { contacts: [], contactTotal: 0, visitsByDay: [], error: null };
+    try {
+        const listing: VaultEntry[] = await listVaultDir(OPS_CONTACT_DIR);
+        data.contactTotal = listing.length;
+
+        // Newest first, read the 25 most recent in bounded parallel
+        const recent = [...listing]
+            .sort((a, b) => b.name.localeCompare(a.name))
+            .slice(0, 25);
+        const pool = 8;
+        let cursor = 0;
+        const worker = async () => {
+            while (cursor < recent.length) {
+                const item = recent[cursor++];
+                const json = await readVaultJson<Record<string, any>>(item.path_lower);
+                if (json) {
+                    data.contacts.push({
+                        file: item.name,
+                        ts: String(json.ts || ''),
+                        name: String(json.name || '—'),
+                        email: String(json.email || '—'),
+                        message: String(json.message || '').slice(0, 200),
+                        honeypot: Boolean(json.honeypot),
+                        ip: String(json.ip || '—'),
+                    });
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(pool, recent.length) }, worker));
+
+        // Visit counts: last 14 days, newest first
+        const visits = (await listVaultDir(OPS_VISITS_DIR))
+            .filter(e => e.name.endsWith('.json'))
+            .sort((a, b) => b.name.localeCompare(a.name))
+            .slice(0, 14);
+        for (const v of visits) {
+            const paths = (await readVaultJson<Record<string, number>>(v.path_lower)) || {};
+            const total = Object.values(paths).reduce((a, b) => a + b, 0);
+            data.visitsByDay.push({ day: v.name.replace('.json', ''), total, paths });
+        }
+    } catch (err: any) {
+        data.error = err.message;
+    }
+
+    cache.at = Date.now();
+    cache.data = data;
+    return data;
+}
+
+const wantFresh = Astro.url.searchParams.has('fresh');
+const ops = await loadOps(wantFresh);
+const fmtTs = (iso: string) => {
+    try {
+        return new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+        return iso || '—';
+    }
+};
+const today = new Date().toISOString().slice(0, 10);
+const todayEntry = ops.visitsByDay.find(v => v.day === today);
+const topPathsToday = todayEntry
+    ? Object.entries(todayEntry.paths).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    : [];
 ---
 
 <VaultLayout title="Ops" active="ops" expiresAt={auth.expiresAt}>
-    <div class="vault-empty">
-        <p>[ OPS MODULE :: STANDBY ]</p>
-        <p>telemetry + contact logs come online in phase 5 — dropbox/ops/</p>
-    </div>
+    {ops.error ? (
+        <div class="vault-empty">
+            <p>[ STORAGE OFFLINE ]</p>
+            <p>{ops.error}</p>
+        </div>
+    ) : (
+        <>
+            <div class="vault-status">
+                <div class="vault-stat">
+                    <span class="k">[ TOTAL SUBMISSIONS ]</span>
+                    <span class="v">{ops.contactTotal}</span>
+                </div>
+                <div class="vault-stat">
+                    <span class="k">[ VIEWS TODAY ]</span>
+                    <span class="v">{todayEntry ? todayEntry.total : 0}</span>
+                </div>
+                <div class="vault-stat">
+                    <span class="k">[ TOP PATHS TODAY ]</span>
+                    <span class="v">
+                        {topPathsToday.length === 0
+                            ? '—'
+                            : topPathsToday.map(([p, n]) => `${p} (${n})`).join(' · ')}
+                    </span>
+                </div>
+            </div>
+
+            <h2 style="margin: 0.5rem 0 1rem;">CONTACT LOG <span class="vault-tag">last {ops.contacts.length}</span></h2>
+            {ops.contacts.length === 0 ? (
+                <div class="vault-empty"><p>[ EMPTY :: NO SUBMISSIONS LOGGED YET ]</p></div>
+            ) : (
+                <div class="vault-list">
+                    {ops.contacts.map(c => (
+                        <div class="vault-row">
+                            <div class="vr-main">
+                                <div class="vr-title">
+                                    {c.name} <span class="vr-meta">&lt;{c.email}&gt;</span>
+                                    {c.honeypot && <span class="vault-tag" style="color:#C62828;">HONEYPOT</span>}
+                                </div>
+                                <div class="vr-meta">{fmtTs(c.ts)} · {c.ip} · {c.file}</div>
+                                <div class="vr-meta" style="margin-top:0.3rem;">{c.message}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <h2 style="margin: 2rem 0 1rem;">PAGE VIEWS <span class="vault-tag">last {ops.visitsByDay.length} days</span></h2>
+            {ops.visitsByDay.length === 0 ? (
+                <div class="vault-empty"><p>[ EMPTY :: NO VISITS RECORDED YET ]</p></div>
+            ) : (
+                <div class="vault-list">
+                    {ops.visitsByDay.map(v => (
+                        <div class="vault-row">
+                            <div class="vr-main">
+                                <div class="vr-title">{v.day} — {v.total} view(s)</div>
+                                <div class="vr-meta">
+                                    {Object.entries(v.paths).sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p}: ${n}`).join(' · ')}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div style="margin-top: 1.5rem;">
+                <a href="/vault/ops?fresh=1" class="vault-btn ghost">[ $ tail --fresh ]</a>
+            </div>
+        </>
+    )}
 </VaultLayout>

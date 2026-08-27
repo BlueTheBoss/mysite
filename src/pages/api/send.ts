@@ -3,8 +3,20 @@ import 'dotenv/config';
 import { Resend } from 'resend';
 import { createRateLimiter, getClientIp, escapeHtml } from '../../lib/security';
 import { jsonResponse, readJson } from '../../lib/http';
+import { writeVaultJson, OPS_CONTACT_DIR, slugify } from '../../lib/vault';
 
 export const prerender = false;
+
+// Best-effort ops log: one small JSON per submission under ops/contact/.
+// Never blocks or fails the contact response — email delivery is the
+// primary path, this is the audit trail.
+function logContact(entry: Record<string, unknown>): void {
+    const ts = new Date();
+    const stamp = ts.toISOString().replace(/[:.]/g, '-');
+    const who = slugify(String(entry.name || 'unknown'), 40) || 'unknown';
+    writeVaultJson(`${OPS_CONTACT_DIR}/${stamp}-${who}.json`, entry)
+        .catch(err => console.warn('Contact ops-log failed:', err.message));
+}
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -33,6 +45,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
     // Honeypot: hidden field humans never fill. Bots get a fake success.
     if (website) {
+        logContact({ ts: new Date().toISOString(), name: tName, email: tEmail, message: tMessage, honeypot: true, ip });
         return jsonResponse({ success: true });
     }
 
@@ -47,6 +60,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     if (!EMAIL_RE.test(tEmail)) {
         return jsonResponse({ error: 'Invalid email address' }, 400);
     }
+
+    logContact({ ts: new Date().toISOString(), name: tName, email: tEmail, message: tMessage, honeypot: false, ip });
 
     try {
         // Escape everything — email fields are attacker-controlled input
