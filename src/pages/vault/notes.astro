@@ -1,0 +1,16 @@
+---
+import VaultLayout from '../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../lib/requireAuth';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+---
+
+<VaultLayout title="Notes" active="notes" expiresAt={auth.expiresAt}>
+    <div class="vault-empty">
+        <p>[ NOTES MODULE :: STANDBY ]</p>
+        <p>markdown storage comes online in phase 4 — dropbox/notes/</p>
+    </div>
+</VaultLayout>

@@ -1,0 +1,65 @@
+---
+// Shared chrome for all /vault pages. Every page using this layout must
+// call requireVaultAuth() itself first — this layout assumes the request
+// is authenticated and receives the auth info as a prop.
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+    title: string;
+    active?: 'dash' | 'notes' | 'ops' | 'files';
+    expiresAt: number; // epoch ms
+}
+
+const { title, active = 'dash', expiresAt } = Astro.props;
+
+const fmt = (ms: number) => {
+    const d = new Date(ms);
+    return d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+};
+const daysLeft = Math.max(0, Math.round((expiresAt - Date.now()) / 86_400_000));
+---
+
+<BaseLayout title={`${title} // VAULT`} noindex theme="dark" fonts="grotesk" cursor={false} css={['/style.css', '/vault.css']}>
+    <div class="vault-page">
+        <header class="vault-header">
+            <a href="/vault" class="vault-brand">
+                <span class="vault-x">✦</span> ARMEVOX <span class="vault-tag">VAULT</span>
+            </a>
+            <nav class="vault-nav">
+                <a href="/vault" class={`vault-link ${active === 'dash' ? 'active' : ''}`}>DASH</a>
+                <a href="/vault/notes" class={`vault-link ${active === 'notes' ? 'active' : ''}`}>NOTES</a>
+                <a href="/vault/ops" class={`vault-link ${active === 'ops' ? 'active' : ''}`}>OPS</a>
+                <a href="/vault/files" class={`vault-link ${active === 'files' ? 'active' : ''}`}>FILES</a>
+                <a href="/" class="vault-link">EXIT</a>
+                <button id="vault-logout" class="vault-link danger" type="button">LOGOUT</button>
+            </nav>
+        </header>
+
+        <main class="vault-main">
+            <h1 class="vault-title">{title}</h1>
+            <p class="vault-subtitle">session expires {fmt(expiresAt)} · ~{daysLeft} day(s) remaining</p>
+            <slot />
+        </main>
+
+        <div id="vault-toast" class="vault-toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script>
+        // Logout: clear the HttpOnly cookie server-side, then bounce home.
+        document.getElementById('vault-logout')?.addEventListener('click', async () => {
+            try {
+                await fetch('/api/session?logout');
+            } catch { /* cookie clearing is best-effort server-side */ }
+            window.location.href = '/';
+        });
+
+        // Tiny toast helper shared by vault page scripts (exposed globally).
+        (window as any).__vaultToast = function (msg: string, kind: 'ok' | 'error' = 'ok') {
+            const el = document.getElementById('vault-toast');
+            if (!el) return;
+            el.textContent = msg;
+            el.className = `vault-toast shown ${kind}`;
+            setTimeout(() => { el.className = `vault-toast ${kind}`; }, 3200);
+        };
+    </script>
+</BaseLayout>

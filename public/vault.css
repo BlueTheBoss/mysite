@@ -1,0 +1,396 @@
+/* ============================================================
+   VAULT.CSS — private /vault section chrome.
+   Reuses design tokens from style.css (loaded alongside).
+   ============================================================ */
+
+.vault-page {
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Header ---- */
+.vault-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.5rem;
+    border-bottom: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-nav);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.vault-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.vault-brand .vault-x { color: var(--accent-base); }
+
+.vault-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-color);
+    background-color: var(--accent-tint);
+    border: 2px solid var(--border-color);
+    padding: 0.15rem 0.5rem;
+}
+
+.vault-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.vault-link {
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    color: var(--text-color);
+    border: 2.5px solid var(--border-color);
+    background-color: var(--bg-card);
+    padding: 0.4rem 0.85rem;
+    box-shadow: 3px 3px 0 var(--border-color);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.vault-link:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--border-color);
+    background-color: var(--accent-tint);
+}
+
+.vault-link.active {
+    background-color: var(--bg-btn-primary);
+    color: var(--text-btn-primary);
+}
+
+.vault-link.danger:hover {
+    background-color: var(--pin-danger, #C62828);
+    color: #fff;
+}
+
+/* ---- Main ---- */
+.vault-main {
+    flex: 1;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+}
+
+.vault-title {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.4rem;
+}
+
+.vault-subtitle {
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+/* ---- Status strip ---- */
+.vault-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.vault-stat {
+    border: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: 4px 4px 0 var(--border-color);
+    padding: 0.75rem 1.1rem;
+    flex: 1 1 220px;
+}
+
+.vault-stat .k {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.vault-stat .v {
+    font-weight: 700;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.vault-stat .v.ok { color: var(--pin-granted, #1B7F3B); }
+
+/* ---- Card grid ---- */
+.vault-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.vault-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: 6px 6px 0 var(--border-color);
+    padding: 1.4rem 1.4rem 1.2rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.vault-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--border-color);
+}
+
+.vault-card .vc-label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+}
+
+.vault-card .vc-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.vault-card h2 {
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+}
+
+.vault-card p {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.vault-card .vc-cta {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--accent-base);
+    margin-top: 0.4rem;
+}
+
+/* ---- Empty / placeholder states ---- */
+.vault-empty {
+    border: 2.5px dashed var(--border-color);
+    padding: 2rem;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ---- Buttons ---- */
+.vault-btn {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    border: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-btn-primary);
+    color: var(--text-btn-primary);
+    padding: 0.6rem 1.2rem;
+    box-shadow: 4px 4px 0 var(--border-color);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.vault-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--border-color);
+}
+
+.vault-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--border-color);
+}
+
+.vault-btn.ghost {
+    background-color: var(--bg-card);
+    color: var(--text-color);
+}
+
+.vault-btn.danger {
+    background-color: var(--pin-danger, #C62828);
+    color: #fff;
+}
+
+/* ---- Terminal-style list rows (notes, files, submissions) ---- */
+.vault-list {
+    border: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-card);
+    box-shadow: 6px 6px 0 var(--border-color);
+}
+
+.vault-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 2.5px solid var(--border-color);
+    text-decoration: none;
+    color: inherit;
+}
+
+.vault-row:last-child { border-bottom: none; }
+
+.vault-row:hover { background-color: var(--bg-input); }
+
+.vault-row .vr-main { flex: 1; min-width: 0; }
+
+.vault-row .vr-title {
+    font-weight: 800;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.vault-row .vr-meta {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+}
+
+.vault-row .vr-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* ---- Forms (editor, upload) ---- */
+.vault-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.vault-input,
+.vault-textarea {
+    font-family: inherit;
+    font-size: 1rem;
+    border: var(--border-width) solid var(--border-color);
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    padding: 0.7rem 0.9rem;
+    width: 100%;
+}
+
+.vault-textarea {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    min-height: 320px;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.vault-input:focus,
+.vault-textarea:focus {
+    outline: 3px solid var(--accent-base);
+    outline-offset: 2px;
+}
+
+/* ---- Markdown render ---- */
+.vault-md {
+    background-color: var(--bg-card);
+    border: var(--border-width) solid var(--border-color);
+    box-shadow: 6px 6px 0 var(--border-color);
+    padding: 1.75rem 2rem;
+    line-height: 1.65;
+}
+
+.vault-md h1, .vault-md h2, .vault-md h3 {
+    color: var(--text-primary);
+    margin: 1.4em 0 0.5em;
+    line-height: 1.2;
+}
+
+.vault-md h1 { font-size: 1.7rem; }
+.vault-md h2 { font-size: 1.35rem; }
+.vault-md h3 { font-size: 1.1rem; }
+
+.vault-md p, .vault-md ul, .vault-md ol { margin: 0.7em 0; }
+.vault-md ul, .vault-md ol { padding-left: 1.5em; }
+.vault-md code {
+    font-family: 'Courier New', monospace;
+    background-color: var(--bg-input);
+    border: 1.5px solid var(--border-color);
+    padding: 0.05em 0.35em;
+    font-size: 0.88em;
+}
+.vault-md pre {
+    background-color: var(--bg-input);
+    border: 2px solid var(--border-color);
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+.vault-md pre code { border: none; padding: 0; background: none; }
+.vault-md blockquote {
+    border-left: 4px solid var(--accent-base);
+    padding-left: 1rem;
+    color: var(--text-secondary);
+    margin: 1em 0;
+}
+.vault-md a { color: var(--accent-base); }
+.vault-md hr { border: none; border-top: 2.5px dashed var(--border-color); margin: 1.5em 0; }
+.vault-md img { max-width: 100%; border: 2.5px solid var(--border-color); }
+
+/* ---- Toast (reuse pattern from homepage) ---- */
+.vault-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translate(-50%, 150%);
+    background-color: var(--bg-card);
+    border: var(--border-width) solid var(--border-color);
+    box-shadow: 5px 5px 0 var(--border-color);
+    padding: 0.8rem 1.4rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    z-index: 200;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: min(480px, 90vw);
+}
+
+.vault-toast.shown { transform: translate(-50%, 0); }
+.vault-toast.error { background-color: var(--pin-danger, #C62828); color: #fff; }
+.vault-toast.ok { color: var(--pin-granted, #1B7F3B); }
+
+@media (max-width: 640px) {
+    .vault-header { flex-wrap: wrap; }
+    .vault-main { padding: 1.75rem 1rem 3rem; }
+}

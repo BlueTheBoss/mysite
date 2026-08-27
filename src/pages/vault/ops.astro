@@ -1,0 +1,16 @@
+---
+import VaultLayout from '../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../lib/requireAuth';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+---
+
+<VaultLayout title="Ops" active="ops" expiresAt={auth.expiresAt}>
+    <div class="vault-empty">
+        <p>[ OPS MODULE :: STANDBY ]</p>
+        <p>telemetry + contact logs come online in phase 5 — dropbox/ops/</p>
+    </div>
+</VaultLayout>

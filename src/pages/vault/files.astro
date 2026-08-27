@@ -1,0 +1,16 @@
+---
+import VaultLayout from '../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../lib/requireAuth';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+---
+
+<VaultLayout title="Files" active="files" expiresAt={auth.expiresAt}>
+    <div class="vault-empty">
+        <p>[ FILE MODULE :: STANDBY ]</p>
+        <p>private storage comes online in phase 6 — dropbox/files/</p>
+    </div>
+</VaultLayout>

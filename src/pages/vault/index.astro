@@ -1,0 +1,82 @@
+---
+import VaultLayout from '../../layouts/VaultLayout.astro';
+import { requireVaultAuth } from '../../lib/requireAuth';
+
+export const prerender = false;
+
+const auth = requireVaultAuth(Astro.request);
+if (!auth) return Astro.redirect('/', 302);
+
+const serverTime = new Date().toLocaleString('en-GB', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+});
+
+// Session started at most 30 days ago; show precise countdown
+const msLeft = auth.expiresAt - Date.now();
+const daysLeft = Math.floor(msLeft / 86_400_000);
+const hoursLeft = Math.floor((msLeft % 86_400_000) / 3_600_000);
+---
+
+<VaultLayout title="Dashboard" active="dash" expiresAt={auth.expiresAt}>
+    <div class="vault-status">
+        <div class="vault-stat">
+            <span class="k">[ SESSION ]</span>
+            <span class="v ok">AUTHENTICATED</span>
+        </div>
+        <div class="vault-stat">
+            <span class="k">[ TIME REMAINING ]</span>
+            <span class="v">{daysLeft}d {hoursLeft}h</span>
+        </div>
+        <div class="vault-stat">
+            <span class="k">[ SERVER TIME ]</span>
+            <span class="v">{serverTime}</span>
+        </div>
+        <div class="vault-stat">
+            <span class="k">[ STORAGE ]</span>
+            <span class="v">DROPBOX / VibeVault</span>
+        </div>
+    </div>
+
+    <div class="vault-grid">
+        <a href="/vault/notes" class="vault-card">
+            <span class="vc-label">[ PRIVATE :: MARKDOWN ]</span>
+            <span class="vc-icon">✎</span>
+            <h2>NOTES</h2>
+            <p>Private markdown journal. Stored in your Dropbox, rendered server-side, never prerendered or indexed.</p>
+            <span class="vc-cta">$ open /vault/notes →</span>
+        </a>
+
+        <a href="/vault/ops" class="vault-card">
+            <span class="vc-label">[ TELEMETRY :: LOGS ]</span>
+            <span class="vc-icon">📡</span>
+            <h2>OPS PANEL</h2>
+            <p>Contact-form submissions and page-view counters streamed straight to a private dashboard.</p>
+            <span class="vc-cta">$ tail -f /vault/ops →</span>
+        </a>
+
+        <a href="/vault/files" class="vault-card">
+            <span class="vc-label">[ STORAGE :: BINARY ]</span>
+            <span class="vc-icon">📦</span>
+            <h2>FILE VAULT</h2>
+            <p>Private file storage with chunked uploads and expiring download links. Your Dropbox, gated by PIN.</p>
+            <span class="vc-cta">$ ls -la /vault/files →</span>
+        </a>
+
+        <a href="/music" class="vault-card">
+            <span class="vc-label">[ AUDIO :: STREAMING ]</span>
+            <span class="vc-icon">♪</span>
+            <h2>VIBEPLAYER</h2>
+            <p>The original secret. PIN-gated music streaming straight from Dropbox with temp links.</p>
+            <span class="vc-cta">$ play /vibeplayer →</span>
+        </a>
+
+        <a href="/" class="vault-card">
+            <span class="vc-label">[ PUBLIC :: SURFACE ]</span>
+            <span class="vc-icon">✦</span>
+            <h2>PORTFOLIO</h2>
+            <p>Back to the public site. The vault stays invisible — no links point here from the outside.</p>
+            <span class="vc-cta">$ cd / →</span>
+        </a>
+    </div>
+</VaultLayout>

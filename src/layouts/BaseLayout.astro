@@ -17,6 +17,8 @@ interface Props {
     preloadImage?: string;
     appleTouch?: boolean;
     css?: string[];
+    // Pages without script.js have no cursor JS — omit the div there
+    cursor?: boolean;
 }
 
 const {
@@ -31,6 +33,7 @@ const {
     preloadImage,
     appleTouch = false,
     css = [],
+    cursor = true,
 } = Astro.props;
 
 const SITE_URL = 'https://armevox.vercel.app';
@@ -86,7 +89,7 @@ const FAVICONS = {
     <slot name="head" />
 </head>
 <body class={bodyClass || undefined}>
-    <div class="custom-cursor"></div>
+    {cursor && <div class="custom-cursor"></div>}
     <slot />
 </body>
 </html>
