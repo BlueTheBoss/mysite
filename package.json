@@ -2,6 +2,9 @@
   "name": "armevox-portfolio",
   "version": "2.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
