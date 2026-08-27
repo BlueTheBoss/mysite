@@ -44,6 +44,7 @@ Ensure you have [Node.js](https://nodejs.org/) v20+ installed.
 Create a `.env` file in the root directory (see `.env.example`):
 ```env
 SECRET_PIN=your_4_digit_pin
+SESSION_SECRET=your_random_64_char_secret   # signs session cookies; never reuse the PIN
 
 DROPBOX_APP_KEY=your_app_key
 DROPBOX_APP_SECRET=your_app_secret

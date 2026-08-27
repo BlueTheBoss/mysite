@@ -43,16 +43,16 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return jsonResponse({ error: 'Too many messages. Try again later.', retryAfter: rl.retryAfterSecs }, 429);
     }
 
+    // Validate & clamp (must run before any use — the honeypot log below needs these)
+    const tName = typeof name === 'string' ? name.trim().slice(0, LIMITS.name) : '';
+    const tEmail = typeof email === 'string' ? email.trim().slice(0, LIMITS.email) : '';
+    const tMessage = typeof message === 'string' ? message.trim().slice(0, LIMITS.message) : '';
+
     // Honeypot: hidden field humans never fill. Bots get a fake success.
     if (website) {
         logContact({ ts: new Date().toISOString(), name: tName, email: tEmail, message: tMessage, honeypot: true, ip });
         return jsonResponse({ success: true });
     }
-
-    // Validate & clamp
-    const tName = typeof name === 'string' ? name.trim().slice(0, LIMITS.name) : '';
-    const tEmail = typeof email === 'string' ? email.trim().slice(0, LIMITS.email) : '';
-    const tMessage = typeof message === 'string' ? message.trim().slice(0, LIMITS.message) : '';
 
     if (!tName || !tEmail || !tMessage) {
         return jsonResponse({ error: 'Missing required fields' }, 400);

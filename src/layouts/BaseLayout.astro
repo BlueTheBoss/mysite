@@ -95,18 +95,7 @@ const FAVICONS = {
     {cursor && <div class="custom-cursor"></div>}
     <slot />
     {track && (
-        <script is:inline>
-            // Page-view beacon for the private ops panel (public pages only).
-            // Same-origin, fire-and-forget; silently ignored when storage is off.
-            try {
-                fetch('/api/vault/track', {
-                    method: 'POST',
-                    keepalive: true,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: location.pathname }),
-                }).catch(() => {});
-            } catch {}
-        </script>
+        <script is:inline defer src="/beacon.js"></script>
     )}
 </body>
 </html>

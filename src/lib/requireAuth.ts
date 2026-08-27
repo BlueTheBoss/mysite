@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { getSessionToken, verifySessionToken } from './security';
+import { getSessionToken, verifySessionToken, hasSessionSecret } from './security';
 
 export interface VaultAuth {
     /** Verified session token (also safe to re-use for expiry display) */
@@ -14,10 +14,10 @@ export interface VaultAuth {
 // is ever built.
 export function requireVaultAuth(request: Request): VaultAuth | null {
     const pin = process.env.SECRET_PIN;
-    if (!pin) return null;
+    if (!pin || !hasSessionSecret()) return null;
 
     const token = getSessionToken(request.headers);
-    if (!token || !verifySessionToken(token, pin)) return null;
+    if (!token || !verifySessionToken(token)) return null;
 
     const expiry = Number(token.slice(0, token.indexOf('.')));
     if (!Number.isFinite(expiry)) return null;

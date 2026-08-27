@@ -7,6 +7,7 @@ import {
     sessionCookieHeader,
     createRateLimiter,
     getClientIp,
+    hasSessionSecret,
     escapeHtml
 } from '../../lib/security';
 import { jsonResponse, readJson } from '../../lib/http';
@@ -35,6 +36,13 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return jsonResponse({ error: 'Server misconfiguration' }, 500);
     }
 
+    // Session tokens must be signed with a separate high-entropy secret, never
+    // the 4-digit PIN (offline-brute-forceable). Fail closed if it's missing.
+    if (!hasSessionSecret()) {
+        console.error('SESSION_SECRET is not configured!');
+        return jsonResponse({ error: 'Server misconfiguration' }, 500);
+    }
+
     // Reject malformed payloads early
     if (typeof pin !== 'string' || pin.length === 0 || pin.length > 128) {
         return jsonResponse({ success: false, message: 'Invalid request' }, 400);
@@ -57,7 +65,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     if (timingSafeEqualStr(pin, serverPin)) {
         pinLimiter.reset(clientIp); // Clear counter on success
 
-        const token = generateSessionToken(serverPin);
+        const token = generateSessionToken();
         // Token lives in an HttpOnly cookie — JavaScript can never read or exfiltrate it.
         return jsonResponse(
             { success: true, message: 'Access granted' },

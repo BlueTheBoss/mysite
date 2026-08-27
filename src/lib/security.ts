@@ -3,26 +3,35 @@ import crypto from 'node:crypto';
 
 // ── Session Tokens ─────────────────────────────────────────────────────────────
 // Expiring HMAC token: "<expiryMs>.<hmac(expiryMs)>". Stateless, but bounded:
-// the server rejects anything older than SESSION_TTL_MS. Rotating SECRET_PIN
-// invalidates every outstanding token immediately.
+// the server rejects anything older than SESSION_TTL_MS. The HMAC is keyed by
+// SESSION_SECRET — an independent, high-entropy random value — never the PIN.
+// The PIN is only 4 digits (~10k candidates), so signing with it would let
+// anyone holding one captured token offline-recover the PIN in milliseconds.
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const SESSION_COOKIE = 'vibe_session';
 
-function signExpiry(secretPin: string, expiryMs: number): string {
+const sessionSecret = () => (process.env.SESSION_SECRET || '').trim();
+
+export function hasSessionSecret(): boolean {
+    return Boolean(sessionSecret());
+}
+
+function signExpiry(expiryMs: number): string {
     return crypto
-        .createHmac('sha256', String(secretPin))
+        .createHmac('sha256', sessionSecret())
         .update(`vibe_session_v1:${expiryMs}`)
         .digest('hex');
 }
 
-export function generateSessionToken(secretPin: string): string {
+export function generateSessionToken(): string {
+    if (!hasSessionSecret()) throw new Error('SESSION_SECRET is not configured');
     const expiry = Date.now() + SESSION_TTL_MS;
-    return `${expiry}.${signExpiry(secretPin, expiry)}`;
+    return `${expiry}.${signExpiry(expiry)}`;
 }
 
 // Returns true only if the token is well-formed, unexpired, and correctly signed.
-export function verifySessionToken(token: unknown, secretPin: unknown): boolean {
-    if (!token || !secretPin || typeof token !== 'string') return false;
+export function verifySessionToken(token: unknown): boolean {
+    if (!hasSessionSecret() || !token || typeof token !== 'string') return false;
     const dotAt = token.indexOf('.');
     if (dotAt === -1) return false;
 
@@ -32,14 +41,14 @@ export function verifySessionToken(token: unknown, secretPin: unknown): boolean 
     // Reject tokens "issued" further in the future than one TTL allows
     if (expiry > Date.now() + SESSION_TTL_MS + 60_000) return false;
 
-    return timingSafeEqualStr(sig, signExpiry(String(secretPin), expiry));
+    return timingSafeEqualStr(sig, signExpiry(expiry));
 }
 
 // If the token is valid, returns its expiry timestamp — used by the vault
 // dashboard to show how long the current session lasts.
-export function sessionExpiry(token: unknown, secretPin: unknown): number | null {
-    if (!token || !secretPin || typeof token !== 'string') return null;
-    if (!verifySessionToken(token, secretPin)) return null;
+export function sessionExpiry(token: unknown): number | null {
+    if (!token || typeof token !== 'string') return null;
+    if (!verifySessionToken(token)) return null;
     const expiry = Number(token.slice(0, token.indexOf('.')));
     return Number.isFinite(expiry) ? expiry : null;
 }
@@ -88,10 +97,10 @@ export function getSessionToken(headers: Headers): string | null {
 
 // Full check against the configured PIN
 export function isAuthenticated(headers: Headers): boolean {
-    const pin = process.env.SECRET_PIN;
-    if (!pin) return false;
+    // Both are required: the PIN gates entry, SESSION_SECRET signs tokens.
+    if (!process.env.SECRET_PIN || !hasSessionSecret()) return false;
     try {
-        return verifySessionToken(getSessionToken(headers), pin);
+        return verifySessionToken(getSessionToken(headers));
     } catch {
         return false;
     }
@@ -151,4 +160,21 @@ export function escapeHtml(value: unknown): string {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// Defense-in-depth for rendered markdown: `marked()` passes raw HTML through,
+// so untrusted note content could smuggle scripts/event handlers/URLs in.
+// Not a full HTML parser, but it strips every element that can execute code —
+// enough for a single-owner personal notes app.
+export function sanitizeHtml(value: unknown): string {
+    let out = String(value ?? '');
+    // Remove entire dangerous blocks, nested content included
+    out = out.replace(/<\s*(script|iframe|object|embed|form|svg|math)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+    // Remove any unpaired openings from the same set
+    out = out.replace(/<\s*(script|iframe|object|embed|form|svg|math)\b[^>]*>/gi, '');
+    // Strip inline event handlers (onclick=…, onload=…)
+    out = out.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    // Disarm javascript:/data:/vbscript: URLs on navigation/load attributes
+    out = out.replace(/\b(href|src|srcdoc|action|formaction)\s*=\s*(["'])\s*(?:javascript|data|vbscript)\s*:/gi, '$1=$2#');
+    return out;
 }

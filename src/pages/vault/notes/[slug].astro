@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import VaultLayout from '../../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../../lib/requireAuth';
+import { sanitizeHtml } from '../../../lib/security';
 import { readVaultText, NOTE_DIR, slugify } from '../../../lib/vault';
 
 export const prerender = false;
@@ -24,7 +25,7 @@ try {
         ? new Date((meta.result as any).server_modified).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
         : '';
     const md = await readVaultText(`${NOTE_DIR}/${slug}.md`);
-    html = await marked.parse(md);
+    html = sanitizeHtml(await marked.parse(md));
 } catch (err: any) {
     loadError = err.message;
 }

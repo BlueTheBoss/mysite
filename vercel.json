@@ -40,7 +40,7 @@
       ]
     },
     {
-      "source": "/(script|music-player)\\.js",
+      "source": "/(script|music-player|beacon)\\.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=604800" }
       ]
