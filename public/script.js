@@ -1605,11 +1605,11 @@ Theme: Hybrid Brutalism
 
         if (!pills.length || !badgeItems.length) return;
 
-        const defaultDesc = '<strong>Powers:</strong> This site (Astro + Turso + Dropbox), Kizamu, Amixi AI, & SDM660 Kernel.';
+        const defaultDesc = '<strong>Powers:</strong> Java & Python backends, this site (Astro + Turso + Dropbox), Kizamu, Amixi AI, & SDM660 Kernel.';
         const categoryDescs = {
-            all: '<strong>Powers:</strong> This site (Astro + Turso + Dropbox), Kizamu (Next.js + Supabase), Amixi (Python + Groq), & SDM660 Kernel (C).',
+            all: '<strong>Powers:</strong> Java & Python backends, this site (Astro + Turso + Dropbox), Kizamu (Next.js + Supabase), Amixi (Python + Groq), & SDM660 Kernel (C).',
             frontend: '<strong>Frontend:</strong> TypeScript, Astro SSR & React powering Armevox Portfolio, Kizamu Sanctuary & Math Titan.',
-            backend: '<strong>Backend:</strong> Node.js serverless APIs, Python/Groq AI for Amixi, Go for packet sniffing & Turso/Supabase DBs.',
+            backend: '<strong>Backend:</strong> Java backend services, Python AI/automation for Amixi, Node.js serverless APIs & Go sockets.',
             systems: '<strong>Systems:</strong> Low-level C and ARM64 Assembly powering the Xiaomi SDM660 custom Android kernel & AOSP.'
         };
 
