@@ -166,25 +166,34 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
             <form id="upload-form">
                 <input type="hidden" id="current-folder-hidden" value={currentFolder} />
                 <div class="vault-dropzone" id="dropzone">
-                    <input type="file" id="file-input" required />
+                    <input type="file" id="file-input" multiple />
                     <div class="vault-metric-value" style="font-size: 1.1rem; margin-bottom: 0.35rem;">
                         Drag and drop files here, or click to browse
                     </div>
                     <p class="vault-empty-desc" id="file-chosen-desc">
-                        {currentFolder ? `Uploading directly into: ${currentFolder}` : 'Supports large files via direct chunked streaming.'}
+                        {currentFolder ? `Uploading directly into: ${currentFolder}` : 'Supports multi-file and large files via chunked streaming.'}
                     </p>
                 </div>
 
-                <div id="progress-wrapper" style="display: none; margin-bottom: 1.75rem;">
+                <!-- Multi-file Upload Queue Preview -->
+                <div id="upload-queue-box" class="vault-queue-box" style="display: none;">
+                    <div class="vault-queue-header">
+                        <span id="upload-queue-summary">0 files selected</span>
+                        <button type="button" class="vault-btn sm ghost" id="upload-queue-clear-btn">Clear Queue</button>
+                    </div>
+                    <div class="vault-queue-list" id="upload-queue-list"></div>
+                </div>
+
+                <div id="progress-wrapper" style="display: none; margin-top: 1.25rem; margin-bottom: 1.75rem;">
                     <div class="vault-progress-container">
                         <div class="vault-progress-bar" id="upload-progress-bar"></div>
                         <div class="vault-progress-text" id="upload-progress-text">0%</div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 0.6rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 0.6rem; align-items: center; margin-top: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap;">
                     <button type="submit" class="vault-btn primary" id="upload-btn" disabled>
-                        Upload File
+                        Upload Files
                     </button>
                 </div>
             </form>
@@ -197,10 +206,19 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                 </div>
             ) : (
                 <div class="vault-panel">
-                    <div class="vault-panel-header">
-                        <h2 class="vault-panel-title">
-                            Repository ({folders.length + files.length})
-                        </h2>
+                    <div class="vault-panel-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <input 
+                                type="checkbox" 
+                                id="select-all-cb" 
+                                class="vault-checkbox" 
+                                title="Select all items" 
+                                aria-label="Select all items"
+                            />
+                            <h2 class="vault-panel-title">
+                                Repository ({folders.length + files.length})
+                            </h2>
+                        </div>
                         <input
                             type="search"
                             id="files-search"
@@ -216,26 +234,37 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                             const relPath = resolveRelPath(f.name);
                             const isLocked = Boolean(locks[relPath]);
                             return (
-                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="folder">
-                                    <div class="vault-row-main">
-                                        <div class="vault-row-title">
-                                            <span class="vault-card-code" style="color: var(--ctp-peach); border-color: rgba(250, 179, 135, 0.3);">DIR</span>
-                                            <a 
-                                                href={`/vault/files?folder=${encodeURIComponent(relPath)}`} 
-                                                class="folder-item-link"
-                                                data-path={relPath}
-                                                data-name={f.name}
-                                                data-locked={isLocked ? '1' : '0'}
-                                                style="color: var(--v-text); text-decoration: none; font-weight: 600;"
-                                            >
-                                                {f.name}/
-                                            </a>
-                                            {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
-                                        </div>
-                                        <div class="vault-row-meta">
-                                            <span>Folder</span>
-                                            <span>·</span>
-                                            <span>{relPath}</span>
+                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="folder" data-path={relPath} data-locked={isLocked ? '1' : '0'}>
+                                    <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
+                                        <input 
+                                            type="checkbox" 
+                                            class="vault-checkbox item-select-cb" 
+                                            data-path={relPath} 
+                                            data-name={f.name} 
+                                            data-locked={isLocked ? '1' : '0'} 
+                                            data-type="folder" 
+                                            aria-label={`Select folder ${f.name}`}
+                                        />
+                                        <div class="vault-row-main">
+                                            <div class="vault-row-title">
+                                                <span class="vault-card-code" style="color: var(--ctp-peach); border-color: rgba(250, 179, 135, 0.3);">DIR</span>
+                                                <a 
+                                                    href={`/vault/files?folder=${encodeURIComponent(relPath)}`} 
+                                                    class="folder-item-link"
+                                                    data-path={relPath}
+                                                    data-name={f.name}
+                                                    data-locked={isLocked ? '1' : '0'}
+                                                    style="color: var(--v-text); text-decoration: none; font-weight: 600;"
+                                                >
+                                                    {f.name}/
+                                                </a>
+                                                {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
+                                            </div>
+                                            <div class="vault-row-meta">
+                                                <span>Folder</span>
+                                                <span>·</span>
+                                                <span>{relPath}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="vault-row-actions">
@@ -251,7 +280,7 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                                         <button 
                                             class="vault-btn sm ghost open-pin-btn" 
                                             data-path={relPath} 
-                                            data-name={f.name}
+                                            data-name={f.name} 
                                             data-locked={isLocked ? '1' : '0'} 
                                             data-type="folder"
                                             type="button"
@@ -282,17 +311,28 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                             const isImg = isImageFile(f.name);
                             const isAud = isAudioFile(f.name);
                             return (
-                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="file">
-                                    <div class="vault-row-main">
-                                        <div class="vault-row-title">
-                                            <span class="vault-card-code">{getExtBadge(f.name)}</span>
-                                            <span style="font-weight: 500;">{f.name}</span>
-                                            {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
-                                        </div>
-                                        <div class="vault-row-meta">
-                                            <span>{fmtSize(f.size)}</span>
-                                            <span>·</span>
-                                            <span>Modified {fmtDate(f.server_modified)}</span>
+                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="file" data-path={relPath} data-locked={isLocked ? '1' : '0'}>
+                                    <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0;">
+                                        <input 
+                                            type="checkbox" 
+                                            class="vault-checkbox item-select-cb" 
+                                            data-path={relPath} 
+                                            data-name={f.name} 
+                                            data-locked={isLocked ? '1' : '0'} 
+                                            data-type="file" 
+                                            aria-label={`Select file ${f.name}`}
+                                        />
+                                        <div class="vault-row-main">
+                                            <div class="vault-row-title">
+                                                <span class="vault-card-code">{getExtBadge(f.name)}</span>
+                                                <span style="font-weight: 500;">{f.name}</span>
+                                                {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
+                                            </div>
+                                            <div class="vault-row-meta">
+                                                <span>{fmtSize(f.size)}</span>
+                                                <span>·</span>
+                                                <span>Modified {fmtDate(f.server_modified)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="vault-row-actions">
@@ -332,7 +372,7 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                                         <button 
                                             class="vault-btn sm ghost open-pin-btn" 
                                             data-path={relPath} 
-                                            data-name={f.name}
+                                            data-name={f.name} 
                                             data-locked={isLocked ? '1' : '0'} 
                                             data-type="file"
                                             type="button"
@@ -358,6 +398,19 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                     </div>
                 </div>
             )}
+
+            <!-- Sticky Bulk Action Bar -->
+            <div id="bulk-bar" class="vault-bulk-bar" role="toolbar" aria-label="Bulk operations">
+                <div class="vault-bulk-count">
+                    <span id="bulk-count">0</span> items selected
+                </div>
+                <div class="vault-bulk-actions">
+                    <button type="button" class="vault-btn sm ghost" id="bulk-lock-btn">Lock (PIN)</button>
+                    <button type="button" class="vault-btn sm ghost" id="bulk-unlock-btn">Unlock (PIN)</button>
+                    <button type="button" class="vault-btn sm danger" id="bulk-delete-btn">Delete</button>
+                    <button type="button" class="vault-btn sm ghost" id="bulk-clear-btn" title="Deselect all">Cancel</button>
+                </div>
+            </div>
         </>
     )}
 
@@ -571,27 +624,112 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                 document.querySelectorAll('.vault-modal-backdrop.open').forEach(el => closeModal(el as HTMLElement));
                 const audio = document.getElementById('vault-audio-element') as HTMLAudioElement | null;
                 if (audio) audio.pause();
+                clearSelection();
             }
         });
 
-        // ── 1. Upload Logic ───────────────────────────────────────────────────────────
+        // ── 1. Multi-File Upload Queue Logic ─────────────────────────────────────────
         const fileInput = document.getElementById('file-input') as HTMLInputElement;
         const uploadBtn = document.getElementById('upload-btn') as HTMLButtonElement;
         const chosenDesc = document.getElementById('file-chosen-desc');
         const dropzone = document.getElementById('dropzone');
+        const queueBox = document.getElementById('upload-queue-box');
+        const queueSummary = document.getElementById('upload-queue-summary');
+        const queueList = document.getElementById('upload-queue-list');
+        const queueClearBtn = document.getElementById('upload-queue-clear-btn');
         const progressWrap = document.getElementById('progress-wrapper');
         const progressBar = document.getElementById('upload-progress-bar');
         const progressText = document.getElementById('upload-progress-text');
         const currentFolderHidden = (document.getElementById('current-folder-hidden') as HTMLInputElement)?.value || '';
 
-        fileInput?.addEventListener('change', () => {
-            const file = fileInput.files?.[0];
-            if (file) {
-                uploadBtn.disabled = false;
-                if (chosenDesc) chosenDesc.textContent = `Selected: ${file.name} (${(file.size / 1048576).toFixed(2)} MB)`;
-            } else {
+        let queueFiles: File[] = [];
+
+        const formatBytes = (bytes: number) => {
+            if (bytes <= 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let v = bytes;
+            let i = 0;
+            while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+            return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`;
+        };
+
+        const renderQueue = () => {
+            if (!queueBox || !queueList || !queueSummary || !uploadBtn) return;
+            if (queueFiles.length === 0) {
+                queueBox.style.display = 'none';
                 uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Upload Files';
+                if (chosenDesc) {
+                    chosenDesc.textContent = currentFolderHidden
+                        ? `Uploading directly into: ${currentFolderHidden}`
+                        : 'Supports multi-file and large files via chunked streaming.';
+                }
+                return;
             }
+
+            queueBox.style.display = 'block';
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = queueFiles.length === 1 ? 'Upload 1 File' : `Upload ${queueFiles.length} Files`;
+
+            const totalBytes = queueFiles.reduce((sum, f) => sum + f.size, 0);
+            queueSummary.textContent = `${queueFiles.length} file${queueFiles.length > 1 ? 's' : ''} selected (${formatBytes(totalBytes)} total)`;
+
+            queueList.innerHTML = '';
+            queueFiles.forEach((file, idx) => {
+                const item = document.createElement('div');
+                item.className = 'vault-queue-item';
+                item.id = `queue-item-${idx}`;
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'vault-queue-name';
+                nameEl.textContent = file.name;
+
+                const sizeEl = document.createElement('span');
+                sizeEl.className = 'vault-queue-size';
+                sizeEl.textContent = formatBytes(file.size);
+
+                const statusEl = document.createElement('span');
+                statusEl.className = 'vault-queue-status pending';
+                statusEl.id = `queue-status-${idx}`;
+                statusEl.textContent = 'Pending';
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'vault-queue-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.title = 'Remove file';
+                removeBtn.onclick = () => {
+                    queueFiles.splice(idx, 1);
+                    renderQueue();
+                };
+
+                item.appendChild(nameEl);
+                item.appendChild(sizeEl);
+                item.appendChild(statusEl);
+                item.appendChild(removeBtn);
+                queueList.appendChild(item);
+            });
+        };
+
+        const addFilesToQueue = (files: FileList | File[] | null) => {
+            if (!files || files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                if (!queueFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+                    queueFiles.push(f);
+                }
+            }
+            renderQueue();
+        };
+
+        fileInput?.addEventListener('change', () => {
+            addFilesToQueue(fileInput.files);
+            fileInput.value = '';
+        });
+
+        queueClearBtn?.addEventListener('click', () => {
+            queueFiles = [];
+            renderQueue();
         });
 
         ['dragenter', 'dragover'].forEach(name => {
@@ -608,6 +746,13 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
             });
         });
 
+        dropzone?.addEventListener('drop', (e) => {
+            const dt = (e as DragEvent).dataTransfer;
+            if (dt?.files) {
+                addFilesToQueue(dt.files);
+            }
+        });
+
         const setProgress = (pct: number, status: string) => {
             if (progressWrap) progressWrap.style.display = 'block';
             if (progressBar) progressBar.style.width = `${pct}%`;
@@ -616,60 +761,238 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
 
         document.getElementById('upload-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const file = fileInput?.files?.[0];
-            if (!file) return;
+            if (queueFiles.length === 0) return;
 
             uploadBtn.disabled = true;
-            setProgress(0, 'Initializing');
+            if (queueClearBtn) queueClearBtn.style.display = 'none';
+            document.querySelectorAll('.vault-queue-remove').forEach(el => (el as HTMLElement).style.display = 'none');
 
-            try {
-                const start = await jsonOrThrow(await fetch('/api/vault/files/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: file.name, size: file.size, folder: currentFolderHidden }),
-                }));
+            const total = queueFiles.length;
+            let successCount = 0;
+            let failCount = 0;
 
-                const appended = file.size === 0 ? 0 : await (async () => {
-                    let offset = 0;
-                    const lastChunkStart = Math.max(0, Math.floor((file.size - 1) / CHUNK_SIZE) * CHUNK_SIZE);
-                    while (offset < lastChunkStart) {
-                        const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
-                        await jsonOrThrow(await fetch(
-                            `/api/vault/files/append?session=${encodeURIComponent(start.sessionId)}&offset=${offset}`,
-                            { method: 'POST', body: chunk }
-                        ));
-                        offset += chunk.byteLength;
-                        const pct = Math.round((offset / file.size) * 100);
-                        setProgress(pct, 'Uploading');
+            for (let i = 0; i < total; i++) {
+                const file = queueFiles[i];
+                const statusBadge = document.getElementById(`queue-status-${i}`);
+                if (statusBadge) {
+                    statusBadge.className = 'vault-queue-status uploading';
+                    statusBadge.textContent = 'Uploading';
+                }
+
+                try {
+                    const start = await jsonOrThrow(await fetch('/api/vault/files/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: file.name, size: file.size, folder: currentFolderHidden }),
+                    }));
+
+                    const appended = file.size === 0 ? 0 : await (async () => {
+                        let offset = 0;
+                        const lastChunkStart = Math.max(0, Math.floor((file.size - 1) / CHUNK_SIZE) * CHUNK_SIZE);
+                        while (offset < lastChunkStart) {
+                            const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
+                            await jsonOrThrow(await fetch(
+                                `/api/vault/files/append?session=${encodeURIComponent(start.sessionId)}&offset=${offset}`,
+                                { method: 'POST', body: chunk }
+                            ));
+                            offset += chunk.byteLength;
+                            const filePct = Math.round((offset / file.size) * 100);
+                            const overallPct = Math.round(((i + (offset / file.size)) / total) * 100);
+                            setProgress(overallPct, `Uploading (${i + 1}/${total}): ${file.name}`);
+                            if (statusBadge) statusBadge.textContent = `${filePct}%`;
+                        }
+                        return offset;
+                    })();
+
+                    const finalChunk = file.size === 0
+                        ? null
+                        : await file.slice(appended, file.size).arrayBuffer();
+                    const finishUrl = `/api/vault/files/finish?session=${encodeURIComponent(start.sessionId)}` +
+                        `&offset=${appended}&name=${encodeURIComponent(start.name)}` +
+                        `${currentFolderHidden ? `&folder=${encodeURIComponent(currentFolderHidden)}` : ''}` +
+                        `${finalChunk ? '&hasFinal=1' : ''}`;
+
+                    await jsonOrThrow(await fetch(finishUrl, {
+                        method: 'POST',
+                        ...(finalChunk ? { body: finalChunk } : {}),
+                    }));
+
+                    successCount++;
+                    if (statusBadge) {
+                        statusBadge.className = 'vault-queue-status done';
+                        statusBadge.textContent = 'Done';
                     }
-                    return offset;
-                })();
+                } catch (err: any) {
+                    failCount++;
+                    if (statusBadge) {
+                        statusBadge.className = 'vault-queue-status error';
+                        statusBadge.textContent = 'Failed';
+                    }
+                    toast(`Upload failed for "${file.name}": ${err.message}`, 'error');
+                }
 
-                setProgress(95, 'Committing');
-                const finalChunk = file.size === 0
-                    ? null
-                    : await file.slice(appended, file.size).arrayBuffer();
-                const finishUrl = `/api/vault/files/finish?session=${encodeURIComponent(start.sessionId)}` +
-                    `&offset=${appended}&name=${encodeURIComponent(start.name)}` +
-                    `${currentFolderHidden ? `&folder=${encodeURIComponent(currentFolderHidden)}` : ''}` +
-                    `${finalChunk ? '&hasFinal=1' : ''}`;
+                const completedPct = Math.round(((i + 1) / total) * 100);
+                setProgress(completedPct, completedPct === 100 ? 'Finishing up' : `Completed ${i + 1}/${total}`);
+            }
 
-                await jsonOrThrow(await fetch(finishUrl, {
-                    method: 'POST',
-                    ...(finalChunk ? { body: finalChunk } : {}),
-                }));
-
-                setProgress(100, 'Complete');
-                toast(`"${file.name}" uploaded successfully`, 'ok');
-                setTimeout(() => window.location.reload(), 450);
-            } catch (err: any) {
-                toast(`Upload failed: ${err.message}`, 'error');
+            if (failCount === 0) {
+                toast(`All ${successCount} file(s) uploaded successfully`, 'ok');
+                setTimeout(() => window.location.reload(), 600);
+            } else {
+                toast(`${successCount} uploaded, ${failCount} failed. Check queue above.`, 'error');
                 uploadBtn.disabled = false;
-                if (progressWrap) progressWrap.style.display = 'none';
+                if (queueClearBtn) queueClearBtn.style.display = 'inline-block';
             }
         });
 
-        // ── 2. Download File ──────────────────────────────────────────────────────────
+        // ── 2. File Selection & Bulk Actions ──────────────────────────────────────────
+        const selectAllCb = document.getElementById('select-all-cb') as HTMLInputElement;
+        const bulkBar = document.getElementById('bulk-bar');
+        const bulkCount = document.getElementById('bulk-count');
+        const bulkLockBtn = document.getElementById('bulk-lock-btn');
+        const bulkUnlockBtn = document.getElementById('bulk-unlock-btn');
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+        const bulkClearBtn = document.getElementById('bulk-clear-btn');
+
+        const selectedMap = new Map<string, { name: string; path: string; locked: boolean; type: string }>();
+
+        const updateSelectionUI = () => {
+            const allBoxes = Array.from(document.querySelectorAll('.item-select-cb')) as HTMLInputElement[];
+            const visibleBoxes = allBoxes.filter(cb => {
+                const row = cb.closest('.item-row') as HTMLElement | null;
+                return row && row.style.display !== 'none';
+            });
+
+            const count = selectedMap.size;
+            if (bulkCount) bulkCount.textContent = String(count);
+
+            if (count > 0) {
+                bulkBar?.classList.add('visible');
+            } else {
+                bulkBar?.classList.remove('visible');
+            }
+
+            allBoxes.forEach(cb => {
+                const path = cb.dataset.path || '';
+                const row = cb.closest('.vault-row');
+                const isSelected = selectedMap.has(path);
+                cb.checked = isSelected;
+                if (isSelected) {
+                    row?.classList.add('selected');
+                } else {
+                    row?.classList.remove('selected');
+                }
+            });
+
+            if (selectAllCb) {
+                const allSelected = visibleBoxes.length > 0 && visibleBoxes.every(cb => selectedMap.has(cb.dataset.path || ''));
+                const someSelected = visibleBoxes.some(cb => selectedMap.has(cb.dataset.path || ''));
+                selectAllCb.checked = allSelected;
+                selectAllCb.indeterminate = !allSelected && someSelected;
+            }
+        };
+
+        document.querySelectorAll('.item-select-cb').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const target = e.currentTarget as HTMLInputElement;
+                const path = target.dataset.path || '';
+                const name = target.dataset.name || path;
+                const locked = target.dataset.locked === '1';
+                const type = target.dataset.type || 'file';
+
+                if (target.checked) {
+                    selectedMap.set(path, { name, path, locked, type });
+                } else {
+                    selectedMap.delete(path);
+                }
+                updateSelectionUI();
+            });
+        });
+
+        selectAllCb?.addEventListener('change', () => {
+            const visibleBoxes = Array.from(document.querySelectorAll('.item-select-cb')).filter(cb => {
+                const row = cb.closest('.item-row') as HTMLElement | null;
+                return row && row.style.display !== 'none';
+            }) as HTMLInputElement[];
+
+            if (selectAllCb.checked) {
+                visibleBoxes.forEach(cb => {
+                    const path = cb.dataset.path || '';
+                    const name = cb.dataset.name || path;
+                    const locked = cb.dataset.locked === '1';
+                    const type = cb.dataset.type || 'file';
+                    selectedMap.set(path, { name, path, locked, type });
+                });
+            } else {
+                visibleBoxes.forEach(cb => {
+                    const path = cb.dataset.path || '';
+                    selectedMap.delete(path);
+                });
+            }
+            updateSelectionUI();
+        });
+
+        const clearSelection = () => {
+            selectedMap.clear();
+            updateSelectionUI();
+        };
+
+        bulkClearBtn?.addEventListener('click', clearSelection);
+
+        // Bulk Lock
+        bulkLockBtn?.addEventListener('click', () => {
+            if (selectedMap.size === 0) return;
+            const paths = Array.from(selectedMap.keys());
+            promptPin({
+                paths,
+                name: `${paths.length} selected items`,
+                isLocked: false,
+                actionTitle: `Lock ${paths.length} Selected Items`,
+            });
+        });
+
+        // Bulk Unlock
+        bulkUnlockBtn?.addEventListener('click', () => {
+            if (selectedMap.size === 0) return;
+            const paths = Array.from(selectedMap.keys());
+            promptPin({
+                paths,
+                name: `${paths.length} selected items`,
+                isLocked: true,
+                actionTitle: `Unlock ${paths.length} Selected Items`,
+            });
+        });
+
+        // Bulk Delete
+        bulkDeleteBtn?.addEventListener('click', () => {
+            if (selectedMap.size === 0) return;
+            const items = Array.from(selectedMap.values());
+            const lockedItems = items.filter(it => it.locked);
+            const paths = items.map(it => it.path);
+
+            pendingDeletePaths = paths;
+
+            if (deleteModalText) {
+                deleteModalText.innerHTML = `Are you sure you want to permanently delete <strong>${paths.length} selected item${paths.length > 1 ? 's' : ''}</strong>? This action cannot be undone.`;
+            }
+
+            if (lockedItems.length > 0) {
+                if (deleteLockedNotice) {
+                    deleteLockedNotice.style.display = 'block';
+                    deleteLockedNotice.innerHTML = `<strong>[LOCKED]</strong> ${lockedItems.length} of the selected item(s) are locked with a PIN. Unlock them before deleting.`;
+                }
+                deleteModalConfirm.disabled = true;
+                deleteModalConfirm.textContent = 'Locked Items Selected';
+            } else {
+                if (deleteLockedNotice) deleteLockedNotice.style.display = 'none';
+                deleteModalConfirm.disabled = false;
+                deleteModalConfirm.textContent = `Delete ${paths.length} Items`;
+            }
+
+            openModal(deleteBackdrop);
+        });
+
+        // ── 3. Download File ──────────────────────────────────────────────────────────
         document.querySelectorAll('.dl-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const el = e.currentTarget as HTMLElement;
@@ -707,7 +1030,7 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
             });
         });
 
-        // ── 3. 4-Digit Security PIN Modal Handling ────────────────────────────────────
+        // ── 4. 4-Digit Security PIN Modal Handling ────────────────────────────────────
         const pinBackdrop = document.getElementById('pin-backdrop');
         const pinModalTitle = document.getElementById('pin-modal-title');
         const pinModalDesc = document.getElementById('pin-modal-desc');
@@ -716,7 +1039,8 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
         const pinModalSubmit = document.getElementById('pin-modal-submit') as HTMLButtonElement;
 
         interface PinModalOptions {
-            path: string;
+            path?: string;
+            paths?: string[];
             name: string;
             isLocked: boolean;
             actionTitle?: string;
@@ -732,11 +1056,11 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
 
             if (opts.isLocked) {
                 if (pinModalTitle) pinModalTitle.textContent = opts.actionTitle || 'Unlock Protected Item';
-                if (pinModalDesc) pinModalDesc.innerHTML = `Enter the 4-digit PIN for <strong>"${opts.name}"</strong> to unlock it.`;
+                if (pinModalDesc) pinModalDesc.innerHTML = `Enter the 4-digit PIN for <strong>"${opts.name}"</strong> to unlock.`;
                 if (pinModalSubmit) pinModalSubmit.textContent = 'Unlock';
             } else {
-                if (pinModalTitle) pinModalTitle.textContent = 'Set 4-Digit Security PIN';
-                if (pinModalDesc) pinModalDesc.innerHTML = `Enter a 4-digit PIN to lock <strong>"${opts.name}"</strong> against deletion or unauthorized modification.`;
+                if (pinModalTitle) pinModalTitle.textContent = opts.actionTitle || 'Set 4-Digit Security PIN';
+                if (pinModalDesc) pinModalDesc.innerHTML = `Enter a 4-digit PIN to lock <strong>"${opts.name}"</strong> against unauthorized actions.`;
                 if (pinModalSubmit) pinModalSubmit.textContent = 'Confirm Lock';
             }
 
@@ -759,19 +1083,19 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
 
             pinModalSubmit.disabled = true;
             const targetLock = !currentPinOpts.isLocked;
+            const isBatch = Boolean(currentPinOpts.paths && currentPinOpts.paths.length > 0);
+            const reqBody = isBatch
+                ? { paths: currentPinOpts.paths, locked: targetLock, pin }
+                : { path: currentPinOpts.path, locked: targetLock, pin };
 
             try {
                 await jsonOrThrow(await fetch('/api/vault/files/lock', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        path: currentPinOpts.path,
-                        locked: targetLock,
-                        pin: pin,
-                    }),
+                    body: JSON.stringify(reqBody),
                 }));
 
-                toast(targetLock ? `"${currentPinOpts.name}" is now locked with PIN` : `"${currentPinOpts.name}" unlocked`, 'ok');
+                toast(targetLock ? `Locked with PIN` : `Unlocked`, 'ok');
                 closeModal(pinBackdrop);
 
                 if (currentPinOpts.onSuccess) {
@@ -1011,7 +1335,7 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
         const deleteModalText = document.getElementById('delete-modal-text');
         const deleteLockedNotice = document.getElementById('delete-locked-notice');
         const deleteModalConfirm = document.getElementById('delete-modal-confirm') as HTMLButtonElement;
-        let pendingDeletePath = '';
+        let pendingDeletePaths: string[] = [];
 
         document.querySelectorAll('.open-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1021,14 +1345,17 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
                 const isLocked = el.dataset.locked === '1';
                 const type = el.dataset.type || 'item';
 
-                pendingDeletePath = path;
+                pendingDeletePaths = [path];
 
                 if (deleteModalText) {
                     deleteModalText.innerHTML = `Are you sure you want to permanently delete the ${type} <strong>"${name}"</strong>? This action cannot be undone.`;
                 }
 
                 if (isLocked) {
-                    if (deleteLockedNotice) deleteLockedNotice.style.display = 'block';
+                    if (deleteLockedNotice) {
+                        deleteLockedNotice.style.display = 'block';
+                        deleteLockedNotice.innerHTML = '<strong>[LOCKED]</strong> This item is locked with a 4-digit PIN. Unlock it first before deleting.';
+                    }
                     deleteModalConfirm.disabled = true;
                     deleteModalConfirm.textContent = 'Locked with PIN';
                 } else {
@@ -1042,17 +1369,17 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
         });
 
         deleteModalConfirm?.addEventListener('click', async () => {
-            if (!pendingDeletePath) return;
+            if (pendingDeletePaths.length === 0) return;
             deleteModalConfirm.disabled = true;
             deleteModalConfirm.textContent = 'Deleting…';
 
             try {
-                await jsonOrThrow(await fetch('/api/vault/files/delete', {
+                const res = await jsonOrThrow(await fetch('/api/vault/files/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: pendingDeletePath }),
+                    body: JSON.stringify({ paths: pendingDeletePaths }),
                 }));
-                toast(`Deleted successfully`, 'ok');
+                toast(`Deleted ${res.count || pendingDeletePaths.length} item(s)`, 'ok');
                 setTimeout(() => window.location.reload(), 350);
             } catch (err: any) {
                 toast(err.message, 'error');

@@ -1207,3 +1207,188 @@
     background-color: rgba(250, 179, 135, 0.12);
     border: 1px solid rgba(250, 179, 135, 0.3);
 }
+
+/* ---- Multi-file Upload Queue ---- */
+.vault-queue-box {
+    margin-top: 1rem;
+    background-color: var(--ctp-mantle);
+    border: 1px solid var(--v-border-subtle);
+    border-radius: var(--v-radius-sm);
+    padding: 0.85rem 1rem;
+}
+
+.vault-queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--v-text-muted);
+}
+
+.vault-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.vault-queue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.65rem;
+    background-color: var(--ctp-surface0);
+    border-radius: var(--v-radius-sm);
+    font-size: 0.84rem;
+    gap: 0.75rem;
+}
+
+.vault-queue-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--v-text);
+    font-weight: 500;
+}
+
+.vault-queue-size {
+    font-size: 0.76rem;
+    color: var(--v-text-muted);
+    white-space: nowrap;
+}
+
+.vault-queue-status {
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--v-radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.vault-queue-status.pending {
+    color: var(--v-text-muted);
+    background-color: var(--ctp-crust);
+}
+
+.vault-queue-status.uploading {
+    color: var(--ctp-blue);
+    background-color: rgba(137, 180, 250, 0.15);
+}
+
+.vault-queue-status.done {
+    color: var(--ctp-green);
+    background-color: rgba(166, 227, 161, 0.15);
+}
+
+.vault-queue-status.error {
+    color: var(--ctp-red);
+    background-color: rgba(243, 139, 168, 0.15);
+}
+
+.vault-queue-remove {
+    background: none;
+    border: none;
+    color: var(--v-text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.1rem 0.3rem;
+    border-radius: var(--v-radius-sm);
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.vault-queue-remove:hover {
+    color: var(--ctp-red);
+    background-color: rgba(243, 139, 168, 0.15);
+}
+
+/* ---- File Select & Multi-select Checkboxes ---- */
+.vault-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 17px;
+    height: 17px;
+    border: 1.5px solid var(--v-border-subtle);
+    border-radius: 4px;
+    background-color: var(--ctp-mantle);
+    cursor: pointer;
+    display: inline-grid;
+    place-content: center;
+    margin: 0;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.vault-checkbox:hover {
+    border-color: var(--ctp-mauve);
+}
+
+.vault-checkbox:checked {
+    background-color: var(--ctp-mauve);
+    border-color: var(--ctp-mauve);
+}
+
+.vault-checkbox:checked::before {
+    content: "";
+    width: 9px;
+    height: 5px;
+    border-left: 2px solid var(--ctp-base);
+    border-bottom: 2px solid var(--ctp-base);
+    transform: rotate(-45deg) translate(0.5px, -0.5px);
+}
+
+.vault-row.selected {
+    background-color: rgba(203, 166, 247, 0.08);
+    border-left: 3px solid var(--ctp-mauve);
+}
+
+/* ---- Sticky Bulk Action Bar ---- */
+.vault-bulk-bar {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background-color: var(--ctp-surface0);
+    border: 1px solid var(--ctp-surface1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    border-radius: var(--v-radius);
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 900;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+    opacity: 0;
+    pointer-events: none;
+    max-width: 92vw;
+    flex-wrap: wrap;
+}
+
+.vault-bulk-bar.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.vault-bulk-count {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--ctp-mauve);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.vault-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
