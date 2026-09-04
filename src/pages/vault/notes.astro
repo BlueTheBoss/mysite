@@ -1,60 +1,135 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
-import { listVaultDir, NOTE_DIR, type VaultEntry } from '../../lib/vault';
+import { listTursoNotes, type TursoNote } from '../../lib/turso';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
 
-// Notes listing fails soft: storage offline (missing creds, scope error)
-// shows a status card instead of crashing the dashboard.
-let notes: VaultEntry[] = [];
+let notes: TursoNote[] = [];
 let storageError: string | null = null;
-const wantFresh = Astro.url.searchParams.has('refresh');
+
 try {
-    notes = (await listVaultDir(NOTE_DIR, { fresh: wantFresh }))
-        .filter(e => e.name.toLowerCase().endsWith('.md'))
-        .sort((a, b) => (b.server_modified || '').localeCompare(a.server_modified || ''));
+    notes = await listTursoNotes();
 } catch (err: any) {
     storageError = err.message;
 }
 
-const titleOf = (filename: string) => filename.replace(/\.md$/i, '').replace(/-/g, ' ');
 const fmtDate = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+    iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 ---
 
 <VaultLayout title="Notes" active="notes" expiresAt={auth.expiresAt}>
     {storageError ? (
         <div class="vault-empty">
-            <p>[ STORAGE OFFLINE ]</p>
-            <p>{storageError}</p>
-        </div>
-    ) : notes.length === 0 ? (
-        <div class="vault-empty">
-            <p>[ EMPTY DIRECTORY :: 0 ENTRIES ]</p>
-            <p>no notes yet — write the first one</p>
+            <div class="vault-empty-title">Storage Offline</div>
+            <p class="vault-empty-desc">{storageError}</p>
+            <div style="margin-top: 1.5rem;">
+                <a href="/vault/notes?refresh=1" class="vault-btn primary">Retry Connection</a>
+            </div>
         </div>
     ) : (
-        <div class="vault-list">
-            {notes.map(n => (
-                <a class="vault-row" href={`/vault/notes/${n.name.replace(/\.md$/i, '')}`}>
-                    <div class="vr-main">
-                        <div class="vr-title">{titleOf(n.name)}</div>
-                        <div class="vr-meta">
-                            {n.path_lower} · modified {fmtDate(n.server_modified)}
-                        </div>
+        <>
+            <!-- Actions & Search Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    <a href="/vault/notes/edit" class="vault-btn primary">
+                        + New Note
+                    </a>
+                    <a href="/vault/notes?refresh=1" class="vault-btn ghost" title="Fetch fresh notes from Dropbox">
+                        Refresh
+                    </a>
+                    <a href="/vault" class="vault-btn ghost">
+                        Dashboard
+                    </a>
+                </div>
+
+                {notes.length > 0 && (
+                    <input
+                        type="search"
+                        id="notes-search"
+                        class="vault-search-input"
+                        placeholder="Search notes by title…"
+                        aria-label="Filter notes"
+                    />
+                )}
+            </div>
+
+            {notes.length === 0 ? (
+                <div class="vault-empty">
+                    <div class="vault-empty-title">No Notes Yet</div>
+                    <p class="vault-empty-desc">Your private markdown journal is currently empty.</p>
+                    <div style="margin-top: 1.5rem;">
+                        <a href="/vault/notes/edit" class="vault-btn primary">Create First Note</a>
                     </div>
-                    <span class="vr-meta">$ cat →</span>
-                </a>
-            ))}
-        </div>
+                </div>
+            ) : (
+                <div class="vault-panel">
+                    <div class="vault-panel-header">
+                        <h2 class="vault-panel-title">
+                            Journal Entries ({notes.length})
+                        </h2>
+                        <span style="font-size: 0.78rem; color: var(--v-text-muted);" id="notes-counter">
+                            Showing {notes.length} note(s)
+                        </span>
+                    </div>
+
+                    <div class="vault-list" id="notes-list">
+                        {notes.map(n => {
+                            const slug = n.slug;
+                            const displayTitle = n.title;
+                            return (
+                                <div class="vault-row note-entry-row" data-title={displayTitle.toLowerCase()} data-slug={slug}>
+                                    <div class="vault-row-main">
+                                        <div class="vault-row-title">
+                                            <span class="vault-card-code">MD</span>
+                                            <span>{displayTitle}</span>
+                                        </div>
+                                        <div class="vault-row-meta">
+                                            <span>Modified {fmtDate(n.updated_at)}</span>
+                                            <span>·</span>
+                                            <span>turso://notes/{slug}</span>
+                                        </div>
+                                    </div>
+                                    <div class="vault-row-actions">
+                                        <a href={`/vault/notes/${slug}`} class="vault-btn sm ghost" title="Read note">
+                                            View &rarr;
+                                        </a>
+                                        <a href={`/vault/notes/edit?slug=${slug}`} class="vault-btn sm" title="Edit note">
+                                            Edit
+                                        </a>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </>
     )}
 
-    <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
-        <a href="/vault/notes/edit" class="vault-btn">[ + NEW_NOTE ]</a>
-        <a href="/vault/notes/edit?refresh=1" class="vault-btn ghost">[ $ ls --fresh ]</a>
-    </div>
+    <script>
+        const searchInput = document.getElementById('notes-search') as HTMLInputElement | null;
+        const noteRows = document.querySelectorAll('.note-entry-row') as NodeListOf<HTMLElement>;
+        const counterEl = document.getElementById('notes-counter');
+
+        searchInput?.addEventListener('input', () => {
+            const query = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            noteRows.forEach(row => {
+                const title = row.dataset.title || '';
+                const slug = row.dataset.slug || '';
+                const matches = !query || title.includes(query) || slug.includes(query);
+                row.style.display = matches ? 'flex' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            if (counterEl) {
+                counterEl.textContent = `Showing ${visibleCount} note(s)`;
+            }
+        });
+    </script>
 </VaultLayout>

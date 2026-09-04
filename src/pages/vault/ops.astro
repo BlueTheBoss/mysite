@@ -1,23 +1,15 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
-import {
-    listVaultDir,
-    readVaultJson,
-    OPS_CONTACT_DIR,
-    OPS_VISITS_DIR,
-    type VaultEntry,
-} from '../../lib/vault';
+import { listTursoContacts, getTursoTelemetry, type TursoTelemetrySummary } from '../../lib/turso';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
 
-// Module-level 60s cache — the ops page reads ~dozens of small files per
-// render; keep it cheap for repeated views.
-const cache = (globalThis as any).__opsCache ?? ((globalThis as any).__opsCache = { at: 0, data: null });
-const OPS_CACHE_TTL = 60_000;
+const cache = (globalThis as any).__opsCache ?? ((globalThis as any).__opsCache = { at: 0, data: null, telem: null });
+const OPS_CACHE_TTL = 30_000;
 
 interface ContactEntry {
     file: string;
@@ -32,53 +24,48 @@ interface ContactEntry {
 interface OpsData {
     contacts: ContactEntry[];
     contactTotal: number;
+    honeypotTotal: number;
     visitsByDay: { day: string; total: number; paths: Record<string, number> }[];
+    topRoutes: Array<{ path: string; count: number }>;
+    totalViews: number;
     error: string | null;
 }
 
 async function loadOps(fresh = false): Promise<OpsData> {
     if (!fresh && cache.data && Date.now() - cache.at < OPS_CACHE_TTL) return cache.data;
 
-    const data: OpsData = { contacts: [], contactTotal: 0, visitsByDay: [], error: null };
+    const data: OpsData = {
+        contacts: [],
+        contactTotal: 0,
+        honeypotTotal: 0,
+        visitsByDay: [],
+        topRoutes: [],
+        totalViews: 0,
+        error: null,
+    };
+
     try {
-        const listing: VaultEntry[] = await listVaultDir(OPS_CONTACT_DIR);
-        data.contactTotal = listing.length;
+        const rawContacts = await listTursoContacts(100);
+        data.contacts = rawContacts.map(c => ({
+            file: `turso://contacts/${c.id || ''}`,
+            ts: c.created_at,
+            name: c.name,
+            email: c.email,
+            message: c.message,
+            honeypot: c.honeypot,
+            ip: c.ip || '—',
+        }));
+        data.contactTotal = rawContacts.filter(c => !c.honeypot).length;
+        data.honeypotTotal = rawContacts.filter(c => c.honeypot).length;
 
-        // Newest first, read the 25 most recent in bounded parallel
-        const recent = [...listing]
-            .sort((a, b) => b.name.localeCompare(a.name))
-            .slice(0, 25);
-        const pool = 8;
-        let cursor = 0;
-        const worker = async () => {
-            while (cursor < recent.length) {
-                const item = recent[cursor++];
-                const json = await readVaultJson<Record<string, any>>(item.path_lower);
-                if (json) {
-                    data.contacts.push({
-                        file: item.name,
-                        ts: String(json.ts || ''),
-                        name: String(json.name || '—'),
-                        email: String(json.email || '—'),
-                        message: String(json.message || '').slice(0, 200),
-                        honeypot: Boolean(json.honeypot),
-                        ip: String(json.ip || '—'),
-                    });
-                }
-            }
-        };
-        await Promise.all(Array.from({ length: Math.min(pool, recent.length) }, worker));
-
-        // Visit counts: last 14 days, newest first
-        const visits = (await listVaultDir(OPS_VISITS_DIR))
-            .filter(e => e.name.endsWith('.json'))
-            .sort((a, b) => b.name.localeCompare(a.name))
-            .slice(0, 14);
-        for (const v of visits) {
-            const paths = (await readVaultJson<Record<string, number>>(v.path_lower)) || {};
-            const total = Object.values(paths).reduce((a, b) => a + b, 0);
-            data.visitsByDay.push({ day: v.name.replace('.json', ''), total, paths });
-        }
+        const telem = await getTursoTelemetry(14);
+        data.totalViews = telem.totalViews;
+        data.topRoutes = telem.topRoutes;
+        data.visitsByDay = telem.days.map(d => ({
+            day: d.day,
+            total: d.count,
+            paths: {},
+        }));
     } catch (err: any) {
         data.error = err.message;
     }
@@ -90,88 +77,183 @@ async function loadOps(fresh = false): Promise<OpsData> {
 
 const wantFresh = Astro.url.searchParams.has('fresh');
 const ops = await loadOps(wantFresh);
+
 const fmtTs = (iso: string) => {
     try {
-        return new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' +
+            d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     } catch {
         return iso || '—';
     }
 };
+
 const today = new Date().toISOString().slice(0, 10);
 const todayEntry = ops.visitsByDay.find(v => v.day === today);
-const topPathsToday = todayEntry
-    ? Object.entries(todayEntry.paths).sort((a, b) => b[1] - a[1]).slice(0, 5)
-    : [];
+const topPathsToday = ops.topRoutes.slice(0, 6).map(r => [r.path, r.count] as [string, number]);
+
+const maxDailyViews = Math.max(1, ...ops.visitsByDay.map(v => v.total));
+const total14DayViews = ops.totalViews || ops.visitsByDay.reduce((sum, v) => sum + v.total, 0);
 ---
 
-<VaultLayout title="Ops" active="ops" expiresAt={auth.expiresAt}>
+<VaultLayout title="Telemetry" active="ops" expiresAt={auth.expiresAt}>
     {ops.error ? (
         <div class="vault-empty">
-            <p>[ STORAGE OFFLINE ]</p>
-            <p>{ops.error}</p>
+            <div class="vault-empty-title">Storage Offline</div>
+            <p class="vault-empty-desc">{ops.error}</p>
+            <div style="margin-top: 1.5rem;">
+                <a href="/vault/ops?fresh=1" class="vault-btn primary">Retry Connection</a>
+            </div>
         </div>
     ) : (
         <>
-            <div class="vault-status">
-                <div class="vault-stat">
-                    <span class="k">[ TOTAL SUBMISSIONS ]</span>
-                    <span class="v">{ops.contactTotal}</span>
+            <!-- Ops HUD Metrics -->
+            <div class="vault-hud">
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Submissions</span>
+                    </div>
+                    <div class="vault-metric-value">{ops.contactTotal}</div>
+                    <div class="vault-metric-footer">Contact form messages</div>
                 </div>
-                <div class="vault-stat">
-                    <span class="k">[ VIEWS TODAY ]</span>
-                    <span class="v">{todayEntry ? todayEntry.total : 0}</span>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Honeypot Traps</span>
+                    </div>
+                    <div class="vault-metric-value">{ops.honeypotTotal}</div>
+                    <div class="vault-metric-footer">Automated spam suppressed</div>
                 </div>
-                <div class="vault-stat">
-                    <span class="k">[ TOP PATHS TODAY ]</span>
-                    <span class="v">
-                        {topPathsToday.length === 0
-                            ? '—'
-                            : topPathsToday.map(([p, n]) => `${p} (${n})`).join(' · ')}
-                    </span>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Views Today</span>
+                    </div>
+                    <div class="vault-metric-value">{todayEntry ? todayEntry.total : 0}</div>
+                    <div class="vault-metric-footer">Active visitor beacons</div>
+                </div>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">14-Day Traffic</span>
+                    </div>
+                    <div class="vault-metric-value">{total14DayViews}</div>
+                    <div class="vault-metric-footer">Total recorded page views</div>
                 </div>
             </div>
 
-            <h2 style="margin: 0.5rem 0 1rem;">CONTACT LOG <span class="vault-tag">last {ops.contacts.length}</span></h2>
-            {ops.contacts.length === 0 ? (
-                <div class="vault-empty"><p>[ EMPTY :: NO SUBMISSIONS LOGGED YET ]</p></div>
-            ) : (
-                <div class="vault-list">
-                    {ops.contacts.map(c => (
-                        <div class="vault-row">
-                            <div class="vr-main">
-                                <div class="vr-title">
-                                    {c.name} <span class="vr-meta">&lt;{c.email}&gt;</span>
-                                    {c.honeypot && <span class="vault-tag" style="color:#C62828;">HONEYPOT</span>}
-                                </div>
-                                <div class="vr-meta">{fmtTs(c.ts)} · {c.ip} · {c.file}</div>
-                                <div class="vr-meta" style="margin-top:0.3rem;">{c.message}</div>
-                            </div>
-                        </div>
-                    ))}
+            <!-- Top Paths Today -->
+            {topPathsToday.length > 0 && (
+                <div class="vault-panel" style="margin-bottom: 2rem;">
+                    <div class="vault-panel-header">
+                        <h2 class="vault-panel-title">
+                            Top Routes Today
+                        </h2>
+                        <span style="font-size: 0.78rem; color: var(--v-text-muted);">Path breakdown</span>
+                    </div>
+                    <div style="padding: 1.25rem; display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                        {topPathsToday.map(([path, count]) => (
+                            <span style="font-size: 0.8rem; padding: 0.35rem 0.65rem; background: var(--v-bg); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-sm);">
+                                <strong style="color: var(--v-text);">{path}</strong>
+                                <span style="color: var(--v-accent); margin-left: 0.35rem;">{count} views</span>
+                            </span>
+                        ))}
+                    </div>
                 </div>
             )}
 
-            <h2 style="margin: 2rem 0 1rem;">PAGE VIEWS <span class="vault-tag">last {ops.visitsByDay.length} days</span></h2>
-            {ops.visitsByDay.length === 0 ? (
-                <div class="vault-empty"><p>[ EMPTY :: NO VISITS RECORDED YET ]</p></div>
-            ) : (
-                <div class="vault-list">
-                    {ops.visitsByDay.map(v => (
-                        <div class="vault-row">
-                            <div class="vr-main">
-                                <div class="vr-title">{v.day} — {v.total} view(s)</div>
-                                <div class="vr-meta">
-                                    {Object.entries(v.paths).sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p}: ${n}`).join(' · ')}
+            <!-- 14-Day Visual Pageview Chart -->
+            <div class="vault-panel" style="margin-bottom: 2.5rem;">
+                <div class="vault-panel-header">
+                    <h2 class="vault-panel-title">
+                        Daily Traffic (Last 14 Days)
+                    </h2>
+                    <a href="/vault/ops?fresh=1" class="vault-btn sm ghost" title="Refresh metrics">
+                        Refresh
+                    </a>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    {ops.visitsByDay.length === 0 ? (
+                        <p class="vault-empty-desc">No traffic records found in telemetry store.</p>
+                    ) : (
+                        <div class="vault-chart-grid">
+                            {ops.visitsByDay.map(v => {
+                                const pct = Math.max(3, Math.round((v.total / maxDailyViews) * 100));
+                                return (
+                                    <div class="vault-chart-row">
+                                        <span class="vault-chart-label">{v.day}</span>
+                                        <div class="vault-chart-track" title={`${v.day}: ${v.total} views`}>
+                                            <div class="vault-chart-fill" style={`width: ${pct}%;`}></div>
+                                        </div>
+                                        <span class="vault-chart-count">{v.total}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <!-- Contact Submissions Log -->
+            <div class="vault-panel">
+                <div class="vault-panel-header">
+                    <h2 class="vault-panel-title">
+                        Contact Transmissions ({ops.contacts.length})
+                    </h2>
+                    <input
+                        type="search"
+                        id="contact-search"
+                        class="vault-search-input"
+                        placeholder="Filter by name, email, IP…"
+                        aria-label="Filter contact logs"
+                    />
+                </div>
+
+                {ops.contacts.length === 0 ? (
+                    <div class="vault-empty">
+                        <div class="vault-empty-title">No Messages Logged</div>
+                        <p class="vault-empty-desc">Inbound contact submissions will appear here automatically.</p>
+                    </div>
+                ) : (
+                    <div class="vault-list" id="contact-list">
+                        {ops.contacts.map(c => (
+                            <div class="vault-row contact-entry-row" data-search={`${c.name} ${c.email} ${c.ip} ${c.message}`.toLowerCase()}>
+                                <div class="vault-row-main">
+                                    <div class="vault-row-title">
+                                        <span>{c.name}</span>
+                                        <span style="font-weight: 400; color: var(--v-text-secondary);">&lt;{c.email}&gt;</span>
+                                        {c.honeypot && <span style="font-size: 0.75rem; color: var(--ctp-red); font-weight: 500;">[Honeypot]</span>}
+                                    </div>
+                                    <div class="vault-row-meta">
+                                        <span>{fmtTs(c.ts)}</span>
+                                        <span>·</span>
+                                        <span>{c.ip}</span>
+                                        <span>·</span>
+                                        <span>{c.file}</span>
+                                    </div>
+                                    <div style="margin-top: 0.6rem; padding: 0.75rem 1rem; background: var(--v-bg); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-sm); font-size: 0.88rem; line-height: 1.5; color: var(--v-text-secondary); white-space: pre-wrap;">
+                                        "{c.message}"
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <div style="margin-top: 1.5rem;">
-                <a href="/vault/ops?fresh=1" class="vault-btn ghost">[ $ tail --fresh ]</a>
+                        ))}
+                    </div>
+                )}
             </div>
         </>
     )}
+
+    <script>
+        const contactSearch = document.getElementById('contact-search') as HTMLInputElement | null;
+        const contactRows = document.querySelectorAll('.contact-entry-row') as NodeListOf<HTMLElement>;
+
+        contactSearch?.addEventListener('input', () => {
+            const query = contactSearch.value.trim().toLowerCase();
+            contactRows.forEach(row => {
+                const text = row.dataset.search || '';
+                row.style.display = !query || text.includes(query) ? 'flex' : 'none';
+            });
+        });
+    </script>
 </VaultLayout>

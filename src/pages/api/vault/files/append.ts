@@ -8,7 +8,7 @@ export const prerender = false;
 const fileLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 240 });
 // Stay under Vercel's ~4.5 MB function body limit
 const MAX_CHUNK_BYTES = 4 * 1024 * 1024;
-const SESSION_ID_RE = /^[A-Za-z0-9_-]{10,128}$/;
+const SESSION_ID_RE = /^[A-Za-z0-9_:-]{10,256}$/;
 
 // POST /api/vault/files/append?session=<id>&offset=<n>
 // Body: raw application/octet-stream chunk (≤4 MB)

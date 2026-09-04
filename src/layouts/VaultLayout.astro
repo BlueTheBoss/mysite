@@ -1,65 +1,106 @@
 ---
-// Shared chrome for all /vault pages. Every page using this layout must
-// call requireVaultAuth() itself first — this layout assumes the request
-// is authenticated and receives the auth info as a prop.
+// Shared chrome for all /vault pages in Midnight Fog.
+// Verified server-side authentication with minimal, polished styling.
 import BaseLayout from './BaseLayout.astro';
 
 interface Props {
     title: string;
     active?: 'dash' | 'notes' | 'ops' | 'files';
     expiresAt: number; // epoch ms
+    badge?: string;
 }
 
-const { title, active = 'dash', expiresAt } = Astro.props;
+const { title, active = 'dash', expiresAt, badge } = Astro.props;
 
-const fmt = (ms: number) => {
+const fmtDate = (ms: number) => {
     const d = new Date(ms);
-    return d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+        ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 };
-const daysLeft = Math.max(0, Math.round((expiresAt - Date.now()) / 86_400_000));
+const msLeft = Math.max(0, expiresAt - Date.now());
+const daysLeft = Math.floor(msLeft / 86_400_000);
+const hoursLeft = Math.floor((msLeft % 86_400_000) / 3_600_000);
 ---
 
-<BaseLayout title={`${title} // VAULT`} noindex theme="dark" fonts="grotesk" cursor={false} track={false} css={['/style.css', '/vault.css']}>
+<BaseLayout
+    title={`${title} · Vault`}
+    noindex
+    theme="dark"
+    fonts="all"
+    cursor={false}
+    track={false}
+    css={['/style.css', '/vault.css']}
+>
     <div class="vault-page">
+        <!-- Sleek Header Navigation -->
         <header class="vault-header">
-            <a href="/vault" class="vault-brand">
-                <span class="vault-x">✦</span> ARMEVOX <span class="vault-tag">VAULT</span>
-            </a>
-            <nav class="vault-nav">
-                <a href="/vault" class={`vault-link ${active === 'dash' ? 'active' : ''}`}>DASH</a>
-                <a href="/vault/notes" class={`vault-link ${active === 'notes' ? 'active' : ''}`}>NOTES</a>
-                <a href="/vault/ops" class={`vault-link ${active === 'ops' ? 'active' : ''}`}>OPS</a>
-                <a href="/vault/files" class={`vault-link ${active === 'files' ? 'active' : ''}`}>FILES</a>
-                <a href="/" class="vault-link">EXIT</a>
-                <button id="vault-logout" class="vault-link danger" type="button">LOGOUT</button>
+            <div class="vault-brand-wrap">
+                <a href="/vault" class="vault-brand" title="Vault Dashboard">
+                    ARMEVOX
+                </a>
+                <span class="vault-brand-badge">VAULT</span>
+            </div>
+
+            <nav class="vault-nav" aria-label="Vault navigation">
+                <a href="/vault" class={`vault-nav-btn ${active === 'dash' ? 'active' : ''}`}>
+                    Dashboard
+                </a>
+                <a href="/vault/notes" class={`vault-nav-btn ${active === 'notes' ? 'active' : ''}`}>
+                    Notes
+                </a>
+                <a href="/vault/files" class={`vault-nav-btn ${active === 'files' ? 'active' : ''}`}>
+                    Files
+                </a>
+                <a href="/vault/ops" class={`vault-nav-btn ${active === 'ops' ? 'active' : ''}`}>
+                    Telemetry
+                </a>
+                <a href="/" class="vault-nav-btn exit-btn" title="Return to public portfolio">
+                    Exit ↗
+                </a>
+                <button id="vault-logout" class="vault-nav-btn danger-btn" type="button" title="Sign out and revoke session">
+                    Sign Out
+                </button>
             </nav>
         </header>
 
+        <!-- Main Page Container -->
         <main class="vault-main">
-            <h1 class="vault-title">{title}</h1>
-            <p class="vault-subtitle">session expires {fmt(expiresAt)} · ~{daysLeft} day(s) remaining</p>
+            <div class="vault-banner">
+                <div class="vault-banner-left">
+                    <h1 class="vault-title">{title}</h1>
+                    <div class="vault-subtitle">
+                        <span>Active Session</span>
+                        <span>·</span>
+                        <span>Expires {fmtDate(expiresAt)}</span>
+                        <span>({daysLeft}d {hoursLeft}h remaining)</span>
+                        {badge && <span>· {badge}</span>}
+                    </div>
+                </div>
+            </div>
+
             <slot />
         </main>
 
+        <!-- Toast Notifications -->
         <div id="vault-toast" class="vault-toast" role="status" aria-live="polite"></div>
     </div>
 
     <script>
-        // Logout: clear the HttpOnly cookie server-side, then bounce home.
         document.getElementById('vault-logout')?.addEventListener('click', async () => {
             try {
                 await fetch('/api/session?logout');
-            } catch { /* cookie clearing is best-effort server-side */ }
+            } catch { /* best-effort */ }
             window.location.href = '/';
         });
 
-        // Tiny toast helper shared by vault page scripts (exposed globally).
         (window as any).__vaultToast = function (msg: string, kind: 'ok' | 'error' = 'ok') {
             const el = document.getElementById('vault-toast');
             if (!el) return;
             el.textContent = msg;
             el.className = `vault-toast shown ${kind}`;
-            setTimeout(() => { el.className = `vault-toast ${kind}`; }, 3200);
+            setTimeout(() => {
+                el.className = `vault-toast ${kind}`;
+            }, 3200);
         };
     </script>
 </BaseLayout>

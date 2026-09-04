@@ -1,7 +1,8 @@
 ---
 import VaultLayout from '../../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../../lib/requireAuth';
-import { readVaultText, NOTE_DIR, slugify } from '../../../lib/vault';
+import { slugify } from '../../../lib/vault';
+import { getTursoNote } from '../../../lib/turso';
 
 export const prerender = false;
 
@@ -14,14 +15,15 @@ let title = '';
 let content = '';
 if (slugParam) {
     try {
-        const md = await readVaultText(`${NOTE_DIR}/${slugParam}.md`);
-        // Split the stored "# Title" heading back into separate fields
-        const lines = md.split('\n');
-        if (lines[0]?.startsWith('# ')) {
-            title = lines[0].slice(2).trim();
-            content = lines.slice(1).join('\n').replace(/^\s+/, '');
-        } else {
-            content = md;
+        const note = await getTursoNote(slugParam);
+        if (note) {
+            title = note.title;
+            const lines = note.content.split('\n');
+            if (lines[0]?.startsWith('# ')) {
+                content = lines.slice(1).join('\n').replace(/^\s+/, '');
+            } else {
+                content = note.content;
+            }
         }
     } catch {
         // Editing a note that doesn't exist yet — treat as new
@@ -30,37 +32,101 @@ if (slugParam) {
 ---
 
 <VaultLayout title={slugParam ? `Edit: ${slugParam}` : 'New Note'} active="notes" expiresAt={auth.expiresAt}>
-    <form id="note-form" class="vault-form">
-        <input type="hidden" name="slug" value={slugParam} />
-        <input
-            id="note-title"
-            class="vault-input"
-            name="title"
-            placeholder="Note title…"
-            maxlength="120"
-            required
-            value={title}
-        />
-        <textarea
-            id="note-content"
-            class="vault-textarea"
-            name="content"
-            placeholder="# markdown supported&#10;&#10;Write anything. This never leaves your Dropbox."
-        >{content}</textarea>
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <button type="submit" class="vault-btn" id="note-save">[ ▤ SAVE_NOTE ]</button>
-            <a href={slugParam ? `/vault/notes/${slugParam}` : '/vault/notes'} class="vault-btn ghost">[ ← CANCEL ]</a>
-        </div>
-    </form>
+    <div class="vault-editor-shell">
+        <form id="note-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <input type="hidden" name="slug" value={slugParam} />
 
+            <div class="vault-form-field">
+                <label for="note-title" class="vault-form-label">Note Title</label>
+                <input
+                    id="note-title"
+                    class="vault-input"
+                    name="title"
+                    placeholder="Enter a descriptive title…"
+                    maxlength="120"
+                    required
+                    value={title}
+                    autocomplete="off"
+                />
+            </div>
+
+            <div class="vault-form-field">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <label for="note-content" class="vault-form-label">Markdown Content</label>
+                    <span style="font-size: 0.75rem; color: var(--v-text-muted);" id="char-count">0 words</span>
+                </div>
+
+                <div class="vault-editor-split">
+                    <textarea
+                        id="note-content"
+                        class="vault-textarea"
+                        name="content"
+                        placeholder="Write your note in markdown…"
+                    >{content}</textarea>
+
+                    <div id="note-preview-pane" class="vault-live-preview vault-md-viewer" style="margin-bottom: 0;">
+                        <p style="color: var(--v-text-muted); font-size: 0.9rem;">Live preview appears here…</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar Actions -->
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.5rem; border-top: 1px solid var(--v-border-subtle);">
+                <button type="submit" class="vault-btn primary" id="note-save">
+                    Save Note
+                </button>
+                <a href={slugParam ? `/vault/notes/${slugParam}` : '/vault/notes'} class="vault-btn ghost">
+                    Cancel
+                </a>
+                <span id="save-status" style="display: none; font-size: 0.8rem; color: var(--v-accent); font-weight: 600;">Saving…</span>
+            </div>
+        </form>
+    </div>
+
+    <!-- Marked parser for client-side live preview -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
+        declare const marked: any;
+
         const form = document.getElementById('note-form') as HTMLFormElement;
+        const textarea = document.getElementById('note-content') as HTMLTextAreaElement;
+        const previewPane = document.getElementById('note-preview-pane');
+        const charCount = document.getElementById('char-count');
+        const saveBtn = document.getElementById('note-save') as HTMLButtonElement;
+        const statusPill = document.getElementById('save-status');
+
+        function updatePreview() {
+            const val = textarea?.value || '';
+            const words = val.trim().split(/\s+/).filter(Boolean).length;
+            if (charCount) charCount.textContent = `${words} words · ${val.length} chars`;
+
+            if (previewPane) {
+                if (!val.trim()) {
+                    previewPane.innerHTML = '<p style="color: var(--v-text-muted); font-size: 0.9rem;">Live preview appears here…</p>';
+                } else if (typeof marked !== 'undefined') {
+                    try {
+                        previewPane.innerHTML = marked.parse(val);
+                    } catch {
+                        previewPane.textContent = val;
+                    }
+                } else {
+                    previewPane.textContent = val;
+                }
+            }
+        }
+
+        textarea?.addEventListener('input', updatePreview);
+        updatePreview();
+
         form?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('note-save') as HTMLButtonElement;
             const fd = new FormData(form);
-            btn.disabled = true;
-            btn.textContent = '[ SAVING... ]';
+            saveBtn.disabled = true;
+            if (statusPill) {
+                statusPill.style.display = 'inline-flex';
+                statusPill.textContent = 'Saving to Dropbox…';
+            }
+
             try {
                 const res = await fetch('/api/vault/notes', {
                     method: 'POST',
@@ -73,11 +139,15 @@ if (slugParam) {
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Save failed');
-                window.location.href = `/vault/notes/${data.slug}`;
+
+                (window as any).__vaultToast('Note saved successfully', 'ok');
+                setTimeout(() => {
+                    window.location.href = `/vault/notes/${data.slug}`;
+                }, 400);
             } catch (err: any) {
                 (window as any).__vaultToast(err.message, 'error');
-                btn.disabled = false;
-                btn.textContent = '[ ▤ SAVE_NOTE ]';
+                saveBtn.disabled = false;
+                if (statusPill) statusPill.style.display = 'none';
             }
         });
     </script>

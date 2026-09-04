@@ -23,7 +23,7 @@ export const OPS_VISITS_DIR = `${VAULT_PATH}/ops/visits`;
 export const FILES_DIR = `${VAULT_PATH}/files`;
 
 // ── Folder bootstrap ───────────────────────────────────────────────────────────
-const FOLDERS = [NOTE_DIR, OPS_CONTACT_DIR, OPS_VISITS_DIR, FILES_DIR];
+const FOLDERS = [FILES_DIR];
 let bootstrapped: Promise<void> | null = null;
 
 function ensureVaultFolders(): Promise<void> {
@@ -35,23 +35,15 @@ function ensureVaultFolders(): Promise<void> {
                     try {
                         await dbx.filesCreateFolderV2({ path, autorename: false });
                     } catch (err: any) {
-                        // "already exists" is the normal case after first run
-                        if (!String(err?.error_summary || '').includes('conflict')) {
-                            throw new Error(
-                                `Cannot create vault folder ${path} — ${err?.error_summary || err?.message}. ` +
-                                `If this says insufficient_permissions/scope, grant files.content.write ` +
-                                `+ files.metadata.write to the app and re-authorize the refresh token.`
-                            );
+                        const summary = String(err?.error?.error_summary || err?.error_summary || err?.message || '');
+                        if (summary.includes('conflict') || err?.status === 409) {
+                            return; // Folder already exists, ready to use
                         }
+                        console.warn(`Folder check notice for ${path}:`, summary || err?.message);
                     }
                 })
             );
-        })().catch(err => {
-            // Reset so the next request retries — a transient failure here
-            // shouldn't poison the module for the lambda's lifetime.
-            bootstrapped = null;
-            throw err;
-        });
+        })();
     }
     return bootstrapped;
 }
@@ -62,6 +54,7 @@ export interface VaultEntry {
     path_lower: string;
     server_modified: string | null;
     size: number | null;
+    isFolder?: boolean;
 }
 
 const listCache = new Map<string, { at: number; entries: VaultEntry[] }>();
@@ -94,12 +87,14 @@ export async function listVaultDir(dir: string, opts: { fresh?: boolean } = {}):
     return job;
 
     function toEntry(e: files.Metadata): VaultEntry {
+        const isFolder = e['.tag'] === 'folder';
         const f = e as files.FileMetadata;
         return {
             name: e.name,
             path_lower: e.path_lower || '',
-            server_modified: f.server_modified || null,
-            size: typeof f.size === 'number' ? f.size : null,
+            server_modified: isFolder ? null : (f.server_modified || null),
+            size: isFolder ? null : (typeof f.size === 'number' ? f.size : null),
+            isFolder,
         };
     }
 }
@@ -221,3 +216,13 @@ export function safeFilename(input: string, maxLength = 120): string {
         .slice(0, maxLength)
         || 'unnamed';
 }
+
+export function safeRelPath(input: string, maxLength = 240): string {
+    return input
+        .split('/')
+        .map(part => part.trim().replace(/[/\\<>:"|?*\u0000-\u001f]/g, '').replace(/\.\./g, ''))
+        .filter(part => part && part !== '.' && part !== '..')
+        .join('/')
+        .slice(0, maxLength);
+}
+

@@ -3,77 +3,136 @@ import { marked } from 'marked';
 import VaultLayout from '../../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../../lib/requireAuth';
 import { sanitizeHtml } from '../../../lib/security';
-import { readVaultText, NOTE_DIR, slugify } from '../../../lib/vault';
+import { slugify } from '../../../lib/vault';
+import { getTursoNote } from '../../../lib/turso';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
 
-// Slug must round-trip through slugify — anything else is a bad request
 const raw = Astro.params.slug || '';
 const slug = slugify(raw);
 if (!slug || slug !== raw) return Astro.redirect('/vault/notes', 302);
 
 let html = '';
+let rawMarkdown = '';
 let modified = '';
 let loadError: string | null = null;
+let wordCount = 0;
+let noteTitle = slug.replace(/-/g, ' ');
+
 try {
-    const dbx = await import('../../../lib/dropbox').then(m => m.getDbx());
-    const meta = await dbx.filesGetMetadata({ path: `${NOTE_DIR}/${slug}.md` } as any);
-    modified = (meta.result as any).server_modified
-        ? new Date((meta.result as any).server_modified).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
-        : '';
-    const md = await readVaultText(`${NOTE_DIR}/${slug}.md`);
-    html = sanitizeHtml(await marked.parse(md));
+    const note = await getTursoNote(slug);
+    if (!note) {
+        loadError = 'Note not found in database';
+    } else {
+        noteTitle = note.title;
+        rawMarkdown = note.content;
+        modified = new Date(note.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        wordCount = rawMarkdown.trim().split(/\s+/).filter(Boolean).length;
+        html = sanitizeHtml(await marked.parse(rawMarkdown));
+    }
 } catch (err: any) {
     loadError = err.message;
 }
+
+const displayTitle = noteTitle;
 ---
 
-<VaultLayout title={loadError ? 'Notes' : slug} active="notes" expiresAt={auth.expiresAt}>
+<VaultLayout title={loadError ? 'Error' : displayTitle} active="notes" expiresAt={auth.expiresAt}>
     {loadError ? (
         <div class="vault-empty">
-            <p>[ READ ERROR ]</p>
-            <p>{loadError}</p>
-            <a href="/vault/notes" class="vault-link" style="display:inline-block;margin-top:1rem;">← back to notes</a>
+            <div class="vault-empty-title">Note Unavailable</div>
+            <p class="vault-empty-desc">{loadError}</p>
+            <div style="margin-top: 1.5rem;">
+                <a href="/vault/notes" class="vault-btn primary">Back to Notes</a>
+            </div>
         </div>
     ) : (
         <>
-            <div class="vault-status">
-                <div class="vault-stat">
-                    <span class="k">[ FILE ]</span>
-                    <span class="v">notes/{slug}.md</span>
+            <!-- Note Metadata Bar -->
+            <div class="vault-hud" style="margin-bottom: 1.5rem;">
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Record Key</span>
+                        <span class="vault-card-code">SQL</span>
+                    </div>
+                    <div class="vault-metric-value" style="font-size: 1rem;">turso://notes/{slug}</div>
                 </div>
-                <div class="vault-stat">
-                    <span class="k">[ MODIFIED ]</span>
-                    <span class="v">{modified || '—'}</span>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Last Modified</span>
+                    </div>
+                    <div class="vault-metric-value" style="font-size: 1rem;">{modified || '—'}</div>
+                </div>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Word Count</span>
+                    </div>
+                    <div class="vault-metric-value" style="font-size: 1.25rem;">{wordCount} words</div>
                 </div>
             </div>
 
-            <article class="vault-md" set:html={html} />
-
-            <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
-                <a href={`/vault/notes/edit?slug=${slug}`} class="vault-btn">[ ✎ EDIT ]</a>
-                <button id="note-delete" class="vault-btn danger" data-slug={slug} type="button">[ ✕ DELETE ]</button>
-                <a href="/vault/notes" class="vault-btn ghost">[ ← NOTES ]</a>
+            <!-- Action Toolbar -->
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <a href={`/vault/notes/edit?slug=${slug}`} class="vault-btn primary">
+                    Edit Note
+                </a>
+                <button id="copy-raw-btn" class="vault-btn ghost" type="button" data-raw={encodeURIComponent(rawMarkdown)}>
+                    Copy Markdown
+                </button>
+                <button id="note-delete-btn" class="vault-btn danger" data-slug={slug} type="button">
+                    Delete
+                </button>
+                <a href="/vault/notes" class="vault-btn ghost">
+                    All Notes
+                </a>
             </div>
+
+            <!-- Rendered Markdown Body -->
+            <article class="vault-md-viewer" set:html={html} />
         </>
     )}
 
     <script>
-        document.getElementById('note-delete')?.addEventListener('click', async (e) => {
+        document.getElementById('copy-raw-btn')?.addEventListener('click', async (e) => {
+            const btn = e.currentTarget as HTMLButtonElement;
+            const encoded = btn.dataset.raw || '';
+            const raw = decodeURIComponent(encoded);
+            try {
+                await navigator.clipboard.writeText(raw);
+                (window as any).__vaultToast('Markdown copied to clipboard', 'ok');
+            } catch {
+                (window as any).__vaultToast('Unable to copy to clipboard', 'error');
+            }
+        });
+
+        document.getElementById('note-delete-btn')?.addEventListener('click', async (e) => {
             const btn = e.currentTarget as HTMLButtonElement;
             const slug = btn.dataset.slug;
-            if (!slug || !confirm(`Delete note "${slug}"? This cannot be undone.`)) return;
+            if (!slug || !confirm(`Permanently delete note "${slug}"?`)) return;
+            
             btn.disabled = true;
-            const res = await fetch(`/api/vault/notes?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
-            if (res.ok) {
-                window.location.href = '/vault/notes';
-            } else {
-                const { error } = await res.json().catch(() => ({ error: 'Delete failed' }));
-                (window as any).__vaultToast(error, 'error');
+            btn.textContent = 'Deleting…';
+
+            try {
+                const res = await fetch(`/api/vault/notes?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+                if (res.ok) {
+                    (window as any).__vaultToast(`Note "${slug}" deleted`, 'ok');
+                    setTimeout(() => {
+                        window.location.href = '/vault/notes';
+                    }, 400);
+                } else {
+                    const data = await res.json().catch(() => ({ error: 'Delete failed' }));
+                    throw new Error(data.error || 'Delete failed');
+                }
+            } catch (err: any) {
+                (window as any).__vaultToast(err.message, 'error');
                 btn.disabled = false;
+                btn.textContent = 'Delete';
             }
         });
     </script>

@@ -7,76 +7,141 @@ export const prerender = false;
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
 
-const serverTime = new Date().toLocaleString('en-GB', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
+const now = new Date();
+const serverDate = now.toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short'
+});
+const serverTime = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit'
 });
 
-// Session started at most 30 days ago; show precise countdown
-const msLeft = auth.expiresAt - Date.now();
+const msLeft = Math.max(0, auth.expiresAt - Date.now());
 const daysLeft = Math.floor(msLeft / 86_400_000);
 const hoursLeft = Math.floor((msLeft % 86_400_000) / 3_600_000);
+const vaultRoot = process.env.DROPBOX_VAULT_PATH || '/VibeVault';
 ---
 
-<VaultLayout title="Dashboard" active="dash" expiresAt={auth.expiresAt}>
-    <div class="vault-status">
-        <div class="vault-stat">
-            <span class="k">[ SESSION ]</span>
-            <span class="v ok">AUTHENTICATED</span>
+<VaultLayout title="Command Center" active="dash" expiresAt={auth.expiresAt}>
+    <!-- Refined HUD Metrics -->
+    <div class="vault-hud">
+        <div class="vault-metric">
+            <div class="vault-metric-header">
+                <span class="vault-metric-label">Security</span>
+            </div>
+            <div class="vault-metric-value">Authenticated</div>
+            <div class="vault-metric-footer">HMAC-SHA256 · 30-Day TTL</div>
         </div>
-        <div class="vault-stat">
-            <span class="k">[ TIME REMAINING ]</span>
-            <span class="v">{daysLeft}d {hoursLeft}h</span>
+
+        <div class="vault-metric">
+            <div class="vault-metric-header">
+                <span class="vault-metric-label">Session Remaining</span>
+            </div>
+            <div class="vault-metric-value">{daysLeft}d {hoursLeft}h</div>
+            <div class="vault-metric-footer">Auto-revokes upon expiry</div>
         </div>
-        <div class="vault-stat">
-            <span class="k">[ SERVER TIME ]</span>
-            <span class="v">{serverTime}</span>
+
+        <div class="vault-metric">
+            <div class="vault-metric-header">
+                <span class="vault-metric-label">System Clock</span>
+            </div>
+            <div class="vault-metric-value">{serverDate}, {serverTime}</div>
+            <div class="vault-metric-footer">UTC / Server Time</div>
         </div>
-        <div class="vault-stat">
-            <span class="k">[ STORAGE ]</span>
-            <span class="v">DROPBOX / VibeVault</span>
+
+        <div class="vault-metric">
+            <div class="vault-metric-header">
+                <span class="vault-metric-label">Storage Mount</span>
+            </div>
+            <div class="vault-metric-value">{vaultRoot}</div>
+            <div class="vault-metric-footer">Encrypted Cloud Storage</div>
         </div>
     </div>
 
-    <div class="vault-grid">
-        <a href="/vault/notes" class="vault-card">
-            <span class="vc-label">[ PRIVATE :: MARKDOWN ]</span>
-            <span class="vc-icon">✎</span>
-            <h2>NOTES</h2>
-            <p>Private markdown journal. Stored in your Dropbox, rendered server-side, never prerendered or indexed.</p>
-            <span class="vc-cta">$ open /vault/notes →</span>
+    <!-- Polished Bento Cards -->
+    <div class="vault-bento">
+        <!-- Notes Module -->
+        <a href="/vault/notes" class="vault-card col-6">
+            <div>
+                <div class="vault-card-top">
+                    <span class="vault-card-tag">Private Journal</span>
+                    <span class="vault-card-code">MD</span>
+                </div>
+                <h2 class="vault-card-title">Notes</h2>
+                <p class="vault-card-desc">
+                    Personal encrypted notes and developer scratchpad stored directly in Dropbox. Rendered server-side with zero search engine indexing.
+                </p>
+            </div>
+            <span class="vault-card-action">
+                Open Notes &rarr;
+            </span>
         </a>
 
-        <a href="/vault/ops" class="vault-card">
-            <span class="vc-label">[ TELEMETRY :: LOGS ]</span>
-            <span class="vc-icon">📡</span>
-            <h2>OPS PANEL</h2>
-            <p>Contact-form submissions and page-view counters streamed straight to a private dashboard.</p>
-            <span class="vc-cta">$ tail -f /vault/ops →</span>
+        <!-- File Storage Module -->
+        <a href="/vault/files" class="vault-card col-6">
+            <div>
+                <div class="vault-card-top">
+                    <span class="vault-card-tag">Storage Enclave</span>
+                    <span class="vault-card-code">FS</span>
+                </div>
+                <h2 class="vault-card-title">File Vault</h2>
+                <p class="vault-card-desc">
+                    Private cloud storage with chunked resumable upload pipeline, ephemeral download links, and instant deletion.
+                </p>
+            </div>
+            <span class="vault-card-action">
+                Browse Files &rarr;
+            </span>
         </a>
 
-        <a href="/vault/files" class="vault-card">
-            <span class="vc-label">[ STORAGE :: BINARY ]</span>
-            <span class="vc-icon">📦</span>
-            <h2>FILE VAULT</h2>
-            <p>Private file storage with chunked uploads and expiring download links. Your Dropbox, gated by PIN.</p>
-            <span class="vc-cta">$ ls -la /vault/files →</span>
+        <!-- Ops Telemetry -->
+        <a href="/vault/ops" class="vault-card col-4">
+            <div>
+                <div class="vault-card-top">
+                    <span class="vault-card-tag">Monitoring</span>
+                    <span class="vault-card-code">OPS</span>
+                </div>
+                <h2 class="vault-card-title">Telemetry</h2>
+                <p class="vault-card-desc">
+                    Inbound contact submissions, automated spam bot honeypot captures, and daily visitor analytics.
+                </p>
+            </div>
+            <span class="vault-card-action">
+                View Telemetry &rarr;
+            </span>
         </a>
 
-        <a href="/music" class="vault-card">
-            <span class="vc-label">[ AUDIO :: STREAMING ]</span>
-            <span class="vc-icon">♪</span>
-            <h2>VIBEPLAYER</h2>
-            <p>The original secret. PIN-gated music streaming straight from Dropbox with temp links.</p>
-            <span class="vc-cta">$ play /vibeplayer →</span>
+        <!-- VibePlayer Music Suite -->
+        <a href="/music" class="vault-card col-4">
+            <div>
+                <div class="vault-card-top">
+                    <span class="vault-card-tag">Audio Suite</span>
+                    <span class="vault-card-code">AUDIO</span>
+                </div>
+                <h2 class="vault-card-title">VibePlayer</h2>
+                <p class="vault-card-desc">
+                    Stream your private Dropbox music library with real-time frequency analysis and native OS media controls.
+                </p>
+            </div>
+            <span class="vault-card-action">
+                Launch Player &rarr;
+            </span>
         </a>
 
-        <a href="/" class="vault-card">
-            <span class="vc-label">[ PUBLIC :: SURFACE ]</span>
-            <span class="vc-icon">✦</span>
-            <h2>PORTFOLIO</h2>
-            <p>Back to the public site. The vault stays invisible — no links point here from the outside.</p>
-            <span class="vc-cta">$ cd / →</span>
+        <!-- Public Surface Exit -->
+        <a href="/" class="vault-card col-4">
+            <div>
+                <div class="vault-card-top">
+                    <span class="vault-card-tag">Public Surface</span>
+                    <span class="vault-card-code">WEB</span>
+                </div>
+                <h2 class="vault-card-title">Portfolio</h2>
+                <p class="vault-card-desc">
+                    Return to the public portfolio. The vault remains completely unlinked and invisible to public visitors.
+                </p>
+            </div>
+            <span class="vault-card-action">
+                Go to Site &rarr;
+            </span>
         </a>
     </div>
 </VaultLayout>

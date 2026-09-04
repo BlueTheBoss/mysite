@@ -1,15 +1,12 @@
 import type { APIRoute } from 'astro';
 import { isAuthenticated } from '../../../lib/security';
 import { jsonResponse, readJson } from '../../../lib/http';
-import { writeVaultText, deleteVaultPath, NOTE_DIR, slugify } from '../../../lib/vault';
+import { slugify } from '../../../lib/vault';
+import { upsertTursoNote, deleteTursoNote } from '../../../lib/turso';
 
 export const prerender = false;
 
 const MAX_NOTE_BYTES = 512 * 1024; // 512 KB of markdown is plenty
-
-function notePath(slug: string): string {
-    return `${NOTE_DIR}/${slug}.md`;
-}
 
 function resolveSlug(provided: string | undefined, title: string): string {
     const slug = slugify(provided || title);
@@ -33,18 +30,17 @@ export const POST: APIRoute = async ({ request }) => {
     const displayTitle = title || 'Untitled';
     const slug = resolveSlug(typeof body.slug === 'string' ? body.slug : undefined, displayTitle);
 
-    // Store the title as the first heading so the view page renders it
     const doc = `# ${displayTitle}\n\n${content}`;
     if (Buffer.byteLength(doc, 'utf8') > MAX_NOTE_BYTES) {
         return jsonResponse({ error: 'Note too large (max 512 KB)' }, 413);
     }
 
     try {
-        await writeVaultText(notePath(slug), doc);
+        await upsertTursoNote(slug, displayTitle, doc);
         return jsonResponse({ success: true, slug });
     } catch (err: any) {
-        console.error('Note save failed:', err.message);
-        return jsonResponse({ error: err.message || 'Storage write failed' }, 502);
+        console.error('Turso note save failed:', err.message);
+        return jsonResponse({ error: err.message || 'Database write failed' }, 502);
     }
 };
 
@@ -56,10 +52,10 @@ export const DELETE: APIRoute = async ({ request }) => {
     if (!slug) return jsonResponse({ error: 'Missing slug' }, 400);
 
     try {
-        await deleteVaultPath(notePath(slug));
+        await deleteTursoNote(slug);
         return jsonResponse({ success: true });
     } catch (err: any) {
-        console.error('Note delete failed:', err.message);
-        return jsonResponse({ error: err.message || 'Storage delete failed' }, 502);
+        console.error('Turso note delete failed:', err.message);
+        return jsonResponse({ error: err.message || 'Database delete failed' }, 502);
     }
 };

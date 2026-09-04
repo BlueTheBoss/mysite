@@ -6,7 +6,7 @@ import { finishUploadSession, FILES_DIR, safeFilename } from '../../../../lib/va
 export const prerender = false;
 
 const fileLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
-const SESSION_ID_RE = /^[A-Za-z0-9_-]{10,128}$/;
+const SESSION_ID_RE = /^[A-Za-z0-9_:-]{10,256}$/;
 
 // POST /api/vault/files/finish?session=<id>&offset=<n>&name=<file>[&hasFinal=1]
 // Commits the upload session. Client protocol: appends carry all-but-last
@@ -38,9 +38,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         if (finalChunk.byteLength === 0) return jsonResponse({ error: 'Missing final chunk' }, 400);
     }
 
+    const folder = safeRelPath(url.searchParams.get('folder') || '');
+    const target = folder ? `${FILES_DIR}/${folder}/${name}` : `${FILES_DIR}/${name}`;
+
     try {
-        await finishUploadSession(sessionId, offset, finalChunk, `${FILES_DIR}/${name}`);
-        return jsonResponse({ success: true, name });
+        await finishUploadSession(sessionId, offset, finalChunk, target);
+        return jsonResponse({ success: true, name, path: folder ? `${folder}/${name}` : name });
     } catch (err: any) {
         console.error('Upload finish failed:', err.message);
         return jsonResponse({ error: err.message || 'Storage error' }, 502);

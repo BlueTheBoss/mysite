@@ -1,23 +1,48 @@
 ---
 import VaultLayout from '../../layouts/VaultLayout.astro';
 import { requireVaultAuth } from '../../lib/requireAuth';
-import { listVaultDir, FILES_DIR, type VaultEntry } from '../../lib/vault';
+import { listVaultDir, FILES_DIR, safeRelPath, type VaultEntry } from '../../lib/vault';
+import { listVaultLocks } from '../../lib/turso';
 
 export const prerender = false;
 
 const auth = requireVaultAuth(Astro.request);
 if (!auth) return Astro.redirect('/', 302);
 
+const currentFolder = safeRelPath(Astro.url.searchParams.get('folder') || '');
+const targetDir = currentFolder ? `${FILES_DIR}/${currentFolder}` : FILES_DIR;
 const wantFresh = Astro.url.searchParams.has('fresh');
-let files: VaultEntry[] = [];
+
+let entries: VaultEntry[] = [];
+let locks: Record<string, boolean> = {};
 let storageError: string | null = null;
+
 try {
-    files = (await listVaultDir(FILES_DIR, { fresh: wantFresh }))
-        .filter(e => e.size !== null) // directories (none expected) have no size
-        .sort((a, b) => (b.server_modified || '').localeCompare(a.server_modified || ''));
+    const [dirListing, activeLocks] = await Promise.all([
+        listVaultDir(targetDir, { fresh: wantFresh }),
+        listVaultLocks().catch(() => ({} as Record<string, boolean>))
+    ]);
+    entries = dirListing;
+    locks = activeLocks;
 } catch (err: any) {
     storageError = err.message;
 }
+
+const folders = entries.filter(e => e.isFolder).sort((a, b) => a.name.localeCompare(b.name));
+const files = entries.filter(e => !e.isFolder && e.size !== null)
+    .sort((a, b) => (b.server_modified || '').localeCompare(a.server_modified || ''));
+
+const isCurrentFolderLocked = currentFolder ? Boolean(locks[currentFolder]) : false;
+
+// Breadcrumb segments
+const folderSegments = currentFolder ? currentFolder.split('/') : [];
+const breadcrumbs = [
+    { name: 'Root', path: '' },
+    ...folderSegments.map((seg, idx) => ({
+        name: seg,
+        path: folderSegments.slice(0, idx + 1).join('/')
+    }))
+];
 
 const fmtSize = (bytes: number | null): string => {
     if (bytes === null) return '—';
@@ -27,75 +52,491 @@ const fmtSize = (bytes: number | null): string => {
     while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
     return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`;
 };
+
 const fmtDate = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
 const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+const getExtBadge = (name: string) => {
+    const ext = name.split('.').pop()?.toUpperCase() || 'FILE';
+    return ext.slice(0, 4);
+};
+
+const isImageFile = (name: string) => /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i.test(name);
+const isAudioFile = (name: string) => /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(name);
+
+const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${name}` : name);
 ---
 
 <VaultLayout title="Files" active="files" expiresAt={auth.expiresAt}>
     {storageError ? (
         <div class="vault-empty">
-            <p>[ STORAGE OFFLINE ]</p>
-            <p>{storageError}</p>
+            <div class="vault-empty-title">Storage Offline</div>
+            <p class="vault-empty-desc">{storageError}</p>
+            <div style="margin-top: 1.5rem;">
+                <a href={currentFolder ? `/vault/files?folder=${encodeURIComponent(currentFolder)}&fresh=1` : '/vault/files?fresh=1'} class="vault-btn primary">Retry Connection</a>
+            </div>
         </div>
     ) : (
         <>
-            <div class="vault-status">
-                <div class="vault-stat">
-                    <span class="k">[ OBJECTS ]</span>
-                    <span class="v">{files.length}</span>
+            <!-- Storage HUD Metrics -->
+            <div class="vault-hud">
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Objects in Folder</span>
+                    </div>
+                    <div class="vault-metric-value">{files.length + folders.length}</div>
+                    <div class="vault-metric-footer">{folders.length} folder(s), {files.length} file(s)</div>
                 </div>
-                <div class="vault-stat">
-                    <span class="k">[ TOTAL SIZE ]</span>
-                    <span class="v">{fmtSize(totalBytes)}</span>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Total Volume</span>
+                    </div>
+                    <div class="vault-metric-value">{fmtSize(totalBytes)}</div>
+                    <div class="vault-metric-footer">Files in current directory</div>
+                </div>
+
+                <div class="vault-metric">
+                    <div class="vault-metric-header">
+                        <span class="vault-metric-label">Folder Security</span>
+                    </div>
+                    <div class="vault-metric-value" style={isCurrentFolderLocked ? 'color: var(--ctp-peach);' : ''}>
+                        {isCurrentFolderLocked ? 'Locked (4-Digit PIN)' : 'Open'}
+                    </div>
+                    <div class="vault-metric-footer">{isCurrentFolderLocked ? 'PIN required to modify' : 'Standard access'}</div>
                 </div>
             </div>
 
-            <!-- Upload -->
-            <form id="upload-form" class="vault-form" style="margin-bottom: 2rem;">
-                <input type="file" id="file-input" class="vault-input" required />
-                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-                    <button type="submit" class="vault-btn" id="upload-btn">[ ⇧ UPLOAD ]</button>
-                    <span id="upload-progress" class="vr-meta"></span>
+            <!-- Breadcrumb Navigation & Action Toolbar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+                <nav class="vault-breadcrumbs" aria-label="Directory Breadcrumbs">
+                    <span style="color: var(--v-text-muted); font-size: 0.8rem;">DIR:</span>
+                    {breadcrumbs.map((bc, idx) => (
+                        <>
+                            {idx > 0 && <span>/</span>}
+                            {idx === breadcrumbs.length - 1 ? (
+                                <span class="vault-breadcrumb-link active">{bc.name}</span>
+                            ) : (
+                                <a href={bc.path ? `/vault/files?folder=${encodeURIComponent(bc.path)}` : '/vault/files'} class="vault-breadcrumb-link">
+                                    {bc.name}
+                                </a>
+                            )}
+                        </>
+                    ))}
+                    {isCurrentFolderLocked && (
+                        <span class="vault-lock-badge locked" title="This folder is locked with a 4-digit PIN">[LOCKED]</span>
+                    )}
+                </nav>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    {currentFolder && (
+                        <a 
+                            href={folderSegments.length > 1 
+                                ? `/vault/files?folder=${encodeURIComponent(folderSegments.slice(0, -1).join('/'))}`
+                                : '/vault/files'}
+                            class="vault-btn sm ghost"
+                        >
+                            &uarr; Up
+                        </a>
+                    )}
+                    <button type="button" class="vault-btn sm" id="open-new-folder-btn">
+                        + New Folder
+                    </button>
+                    {currentFolder && (
+                        <button 
+                            type="button" 
+                            class="vault-btn sm ghost open-pin-btn"
+                            data-path={currentFolder}
+                            data-name={currentFolder}
+                            data-locked={isCurrentFolderLocked ? '1' : '0'}
+                            data-type="folder"
+                        >
+                            {isCurrentFolderLocked ? 'Unlock Folder' : 'Lock Folder (PIN)'}
+                        </button>
+                    )}
+                    <a href={currentFolder ? `/vault/files?folder=${encodeURIComponent(currentFolder)}&fresh=1` : '/vault/files?fresh=1'} class="vault-btn sm ghost" title="Refresh files list">
+                        Refresh
+                    </a>
+                </div>
+            </div>
+
+            <!-- Polished Upload Zone -->
+            <form id="upload-form">
+                <input type="hidden" id="current-folder-hidden" value={currentFolder} />
+                <div class="vault-dropzone" id="dropzone">
+                    <input type="file" id="file-input" required />
+                    <div class="vault-metric-value" style="font-size: 1.1rem; margin-bottom: 0.35rem;">
+                        Drag and drop files here, or click to browse
+                    </div>
+                    <p class="vault-empty-desc" id="file-chosen-desc">
+                        {currentFolder ? `Uploading directly into: ${currentFolder}` : 'Supports large files via direct chunked streaming.'}
+                    </p>
+                </div>
+
+                <div id="progress-wrapper" style="display: none; margin-bottom: 1.75rem;">
+                    <div class="vault-progress-container">
+                        <div class="vault-progress-bar" id="upload-progress-bar"></div>
+                        <div class="vault-progress-text" id="upload-progress-text">0%</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.6rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <button type="submit" class="vault-btn primary" id="upload-btn" disabled>
+                        Upload File
+                    </button>
                 </div>
             </form>
 
-            {files.length === 0 ? (
+            <!-- File and Folder Explorer Panel -->
+            {folders.length === 0 && files.length === 0 ? (
                 <div class="vault-empty">
-                    <p>[ EMPTY DIRECTORY :: 0 OBJECTS ]</p>
-                    <p>upload something private</p>
+                    <div class="vault-empty-title">Empty Directory</div>
+                    <p class="vault-empty-desc">No files or subfolders found in this directory.</p>
                 </div>
             ) : (
-                <div class="vault-list">
-                    {files.map(f => (
-                        <div class="vault-row" data-name={f.name}>
-                            <div class="vr-main">
-                                <div class="vr-title">{f.name}</div>
-                                <div class="vr-meta">
-                                    {fmtSize(f.size)} · modified {fmtDate(f.server_modified)}
+                <div class="vault-panel">
+                    <div class="vault-panel-header">
+                        <h2 class="vault-panel-title">
+                            Repository ({folders.length + files.length})
+                        </h2>
+                        <input
+                            type="search"
+                            id="files-search"
+                            class="vault-search-input"
+                            placeholder="Filter by name…"
+                            aria-label="Filter files and folders"
+                        />
+                    </div>
+
+                    <div class="vault-list" id="files-list">
+                        <!-- Folders -->
+                        {folders.map(f => {
+                            const relPath = resolveRelPath(f.name);
+                            const isLocked = Boolean(locks[relPath]);
+                            return (
+                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="folder">
+                                    <div class="vault-row-main">
+                                        <div class="vault-row-title">
+                                            <span class="vault-card-code" style="color: var(--ctp-peach); border-color: rgba(250, 179, 135, 0.3);">DIR</span>
+                                            <a 
+                                                href={`/vault/files?folder=${encodeURIComponent(relPath)}`} 
+                                                class="folder-item-link"
+                                                data-path={relPath}
+                                                data-name={f.name}
+                                                data-locked={isLocked ? '1' : '0'}
+                                                style="color: var(--v-text); text-decoration: none; font-weight: 600;"
+                                            >
+                                                {f.name}/
+                                            </a>
+                                            {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
+                                        </div>
+                                        <div class="vault-row-meta">
+                                            <span>Folder</span>
+                                            <span>·</span>
+                                            <span>{relPath}</span>
+                                        </div>
+                                    </div>
+                                    <div class="vault-row-actions">
+                                        <a 
+                                            href={`/vault/files?folder=${encodeURIComponent(relPath)}`} 
+                                            class="vault-btn sm ghost folder-item-link"
+                                            data-path={relPath}
+                                            data-name={f.name}
+                                            data-locked={isLocked ? '1' : '0'}
+                                        >
+                                            Open &rarr;
+                                        </a>
+                                        <button 
+                                            class="vault-btn sm ghost open-pin-btn" 
+                                            data-path={relPath} 
+                                            data-name={f.name}
+                                            data-locked={isLocked ? '1' : '0'} 
+                                            data-type="folder"
+                                            type="button"
+                                            title={isLocked ? 'Unlock folder with PIN' : 'Lock folder with 4-digit PIN'}
+                                        >
+                                            {isLocked ? 'Unlock' : 'Lock (PIN)'}
+                                        </button>
+                                        <button 
+                                            class="vault-btn sm danger open-delete-btn" 
+                                            data-name={f.name} 
+                                            data-path={relPath}
+                                            data-locked={isLocked ? '1' : '0'}
+                                            data-type="folder"
+                                            type="button" 
+                                            title="Delete folder"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="vr-actions">
-                                <button class="vault-btn ghost dl-btn" data-name={f.name} type="button">[ ⇩ GET ]</button>
-                                <button class="vault-btn danger del-btn" data-name={f.name} type="button">[ ✕ ]</button>
-                            </div>
-                        </div>
-                    ))}
+                            );
+                        })}
+
+                        <!-- Files -->
+                        {files.map(f => {
+                            const relPath = resolveRelPath(f.name);
+                            const isLocked = Boolean(locks[relPath]);
+                            const isImg = isImageFile(f.name);
+                            const isAud = isAudioFile(f.name);
+                            return (
+                                <div class="vault-row item-row" data-name={f.name.toLowerCase()} data-type="file">
+                                    <div class="vault-row-main">
+                                        <div class="vault-row-title">
+                                            <span class="vault-card-code">{getExtBadge(f.name)}</span>
+                                            <span style="font-weight: 500;">{f.name}</span>
+                                            {isLocked && <span class="vault-lock-badge locked">[LOCKED]</span>}
+                                        </div>
+                                        <div class="vault-row-meta">
+                                            <span>{fmtSize(f.size)}</span>
+                                            <span>·</span>
+                                            <span>Modified {fmtDate(f.server_modified)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="vault-row-actions">
+                                        {isImg && (
+                                            <button 
+                                                class="vault-btn sm primary open-photo-btn" 
+                                                data-name={f.name} 
+                                                data-path={relPath}
+                                                data-size={fmtSize(f.size)}
+                                                data-locked={isLocked ? '1' : '0'}
+                                                type="button"
+                                            >
+                                                View
+                                            </button>
+                                        )}
+                                        {isAud && (
+                                            <button 
+                                                class="vault-btn sm primary open-audio-btn" 
+                                                data-name={f.name} 
+                                                data-path={relPath}
+                                                data-locked={isLocked ? '1' : '0'}
+                                                type="button"
+                                            >
+                                                Play
+                                            </button>
+                                        )}
+                                        <button 
+                                            class="vault-btn sm ghost dl-btn" 
+                                            data-path={relPath} 
+                                            data-name={f.name} 
+                                            data-locked={isLocked ? '1' : '0'}
+                                            type="button" 
+                                            title="Get temporary download link"
+                                        >
+                                            Download
+                                        </button>
+                                        <button 
+                                            class="vault-btn sm ghost open-pin-btn" 
+                                            data-path={relPath} 
+                                            data-name={f.name}
+                                            data-locked={isLocked ? '1' : '0'} 
+                                            data-type="file"
+                                            type="button"
+                                            title={isLocked ? 'Unlock file with PIN' : 'Lock file with 4-digit PIN'}
+                                        >
+                                            {isLocked ? 'Unlock' : 'Lock (PIN)'}
+                                        </button>
+                                        <button 
+                                            class="vault-btn sm danger open-delete-btn" 
+                                            data-name={f.name} 
+                                            data-path={relPath}
+                                            data-locked={isLocked ? '1' : '0'}
+                                            data-type="file"
+                                            type="button" 
+                                            title="Delete file"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
-
-            <div style="margin-top: 1.5rem;">
-                <a href="/vault/files?fresh=1" class="vault-btn ghost">[ $ ls --fresh ]</a>
-            </div>
         </>
     )}
 
-    <script>
-        const CHUNK_SIZE = 4 * 1024 * 1024; // stays under the 4.5 MB function body limit
+    <!-- 1. Photo Lightbox Modal -->
+    <div id="lightbox-backdrop" class="vault-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="vault-modal vault-lightbox-modal">
+            <div class="vault-modal-header">
+                <div class="vault-modal-title">
+                    <span class="vault-card-code">IMG</span>
+                    <span id="lightbox-filename">Photo Preview</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" class="vault-btn sm ghost" id="lightbox-dl-btn">Download</button>
+                    <button type="button" class="vault-modal-close" id="lightbox-close-btn" aria-label="Close photo viewer">&times;</button>
+                </div>
+            </div>
+            <div class="vault-lightbox-viewport">
+                <div id="lightbox-loader" style="color: var(--v-text-muted); font-size: 0.9rem;">Loading image…</div>
+                <img id="lightbox-img" class="vault-lightbox-img" src="" alt="Vault image preview" style="display: none;" />
+            </div>
+            <div class="vault-modal-footer" style="justify-content: space-between;">
+                <span style="font-size: 0.8rem; color: var(--v-text-muted);" id="lightbox-meta">Size: —</span>
+                <span style="font-size: 0.8rem; color: var(--v-text-muted);">Press Esc to close</span>
+            </div>
+        </div>
+    </div>
 
-        const setProgress = (msg: string) => {
-            const el = document.getElementById('upload-progress');
-            if (el) el.textContent = msg;
+    <!-- 2. Audio Player Modal -->
+    <div id="audio-backdrop" class="vault-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="vault-modal vault-audio-modal">
+            <div class="vault-modal-header">
+                <div class="vault-modal-title">
+                    <span class="vault-card-code">AUDIO</span>
+                    <span id="audio-modal-filename">Audio Player</span>
+                </div>
+                <button type="button" class="vault-modal-close" id="audio-close-btn" aria-label="Close audio player">&times;</button>
+            </div>
+            <div class="vault-modal-body">
+                <div class="vault-audio-card">
+                    <div class="vault-audio-waves" id="audio-waves">
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                        <div class="vault-wave-bar"></div>
+                    </div>
+
+                    <audio id="vault-audio-element" preload="none"></audio>
+
+                    <div class="vault-audio-scrubber">
+                        <span id="audio-time-current">0:00</span>
+                        <input type="range" id="audio-seek" class="vault-slider" min="0" max="100" value="0" />
+                        <span id="audio-time-total">0:00</span>
+                    </div>
+
+                    <div class="vault-audio-controls">
+                        <button type="button" class="vault-btn primary" id="audio-play-toggle">Play</button>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.78rem; color: var(--v-text-muted);">VOL</span>
+                            <input type="range" id="audio-volume" class="vault-slider" style="width: 80px;" min="0" max="1" step="0.05" value="0.8" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="vault-modal-footer">
+                <button type="button" class="vault-btn sm ghost" id="audio-dl-btn">Download Audio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Confirm Delete Modal -->
+    <div id="delete-backdrop" class="vault-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="vault-modal">
+            <div class="vault-modal-header">
+                <div class="vault-modal-title" style="color: var(--ctp-red);">
+                    Confirm Deletion
+                </div>
+                <button type="button" class="vault-modal-close" id="delete-modal-close">&times;</button>
+            </div>
+            <div class="vault-modal-body">
+                <p id="delete-modal-text">Are you sure you want to permanently delete this item?</p>
+                <div id="delete-locked-notice" style="display: none; margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(250, 179, 135, 0.12); border: 1px solid rgba(250, 179, 135, 0.3); border-radius: var(--v-radius-sm); color: var(--ctp-peach); font-size: 0.85rem;">
+                    <strong>[LOCKED]</strong> This item is locked with a 4-digit PIN. Unlock it first before deleting.
+                </div>
+            </div>
+            <div class="vault-modal-footer">
+                <button type="button" class="vault-btn ghost" id="delete-modal-cancel">Cancel</button>
+                <button type="button" class="vault-btn danger" id="delete-modal-confirm">Delete Permanently</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. New Folder Modal -->
+    <div id="folder-backdrop" class="vault-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="vault-modal">
+            <form id="folder-form">
+                <div class="vault-modal-header">
+                    <div class="vault-modal-title">Create New Folder</div>
+                    <button type="button" class="vault-modal-close" id="folder-modal-close">&times;</button>
+                </div>
+                <div class="vault-modal-body">
+                    <div class="vault-form-field">
+                        <label for="folder-name-input" class="vault-form-label">Folder Name</label>
+                        <input 
+                            type="text" 
+                            id="folder-name-input" 
+                            class="vault-input" 
+                            placeholder="e.g. Invoices, Photos, Backups" 
+                            required 
+                            maxlength="80"
+                        />
+                        <span style="font-size: 0.78rem; color: var(--v-text-muted); margin-top: 0.4rem; display: block;">
+                            Will be created inside {currentFolder ? `/${currentFolder}` : 'vault root'}.
+                        </span>
+                    </div>
+                </div>
+                <div class="vault-modal-footer">
+                    <button type="button" class="vault-btn ghost" id="folder-modal-cancel">Cancel</button>
+                    <button type="submit" class="vault-btn primary" id="folder-modal-submit">Create Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 5. 4-Digit Security PIN Modal (Lock / Unlock) -->
+    <div id="pin-backdrop" class="vault-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="vault-modal" style="max-width: 440px;">
+            <form id="pin-modal-form">
+                <div class="vault-modal-header">
+                    <div class="vault-modal-title" id="pin-modal-title">
+                        Security PIN
+                    </div>
+                    <button type="button" class="vault-modal-close" id="pin-modal-close">&times;</button>
+                </div>
+                <div class="vault-modal-body">
+                    <p id="pin-modal-desc" style="margin-bottom: 1.25rem;">
+                        Enter a 4-digit PIN.
+                    </p>
+                    
+                    <div style="display: flex; justify-content: center; margin: 1.5rem 0;">
+                        <input 
+                            type="password" 
+                            inputmode="numeric" 
+                            pattern="[0-9]*" 
+                            maxlength="4" 
+                            id="pin-digits-input" 
+                            class="vault-input" 
+                            placeholder="••••" 
+                            style="text-align: center; font-size: 2rem; letter-spacing: 0.8rem; width: 200px; font-family: monospace; font-weight: 700; padding: 0.6rem;" 
+                            required 
+                            autocomplete="off"
+                        />
+                    </div>
+
+                    <div id="pin-modal-error" style="display: none; padding: 0.6rem 0.85rem; background: rgba(243, 139, 168, 0.15); border: 1px solid rgba(243, 139, 168, 0.35); border-radius: var(--v-radius-sm); color: var(--ctp-red); font-size: 0.84rem; text-align: center;">
+                    </div>
+                </div>
+                <div class="vault-modal-footer">
+                    <button type="button" class="vault-btn ghost" id="pin-modal-cancel">Cancel</button>
+                    <button type="submit" class="vault-btn primary" id="pin-modal-submit">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Interactive Client Scripts -->
+    <script>
+        const CHUNK_SIZE = 4 * 1024 * 1024;
+
+        // Utilities
+        const toast = (msg: string, type: 'ok' | 'error' = 'ok') => {
+            (window as any).__vaultToast(msg, type);
         };
 
         const jsonOrThrow = async (res: Response) => {
@@ -104,20 +545,88 @@ const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
             return data;
         };
 
-        // ---- Upload (chunked) ----
+        const formatTime = (secs: number) => {
+            if (isNaN(secs)) return '0:00';
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        };
+
+        // Modal backdrop helpers
+        const openModal = (backdrop: HTMLElement | null) => {
+            if (!backdrop) return;
+            backdrop.classList.add('open');
+            backdrop.setAttribute('aria-hidden', 'false');
+        };
+
+        const closeModal = (backdrop: HTMLElement | null) => {
+            if (!backdrop) return;
+            backdrop.classList.remove('open');
+            backdrop.setAttribute('aria-hidden', 'true');
+        };
+
+        // Close on Esc key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.vault-modal-backdrop.open').forEach(el => closeModal(el as HTMLElement));
+                const audio = document.getElementById('vault-audio-element') as HTMLAudioElement | null;
+                if (audio) audio.pause();
+            }
+        });
+
+        // ── 1. Upload Logic ───────────────────────────────────────────────────────────
+        const fileInput = document.getElementById('file-input') as HTMLInputElement;
+        const uploadBtn = document.getElementById('upload-btn') as HTMLButtonElement;
+        const chosenDesc = document.getElementById('file-chosen-desc');
+        const dropzone = document.getElementById('dropzone');
+        const progressWrap = document.getElementById('progress-wrapper');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const progressText = document.getElementById('upload-progress-text');
+        const currentFolderHidden = (document.getElementById('current-folder-hidden') as HTMLInputElement)?.value || '';
+
+        fileInput?.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            if (file) {
+                uploadBtn.disabled = false;
+                if (chosenDesc) chosenDesc.textContent = `Selected: ${file.name} (${(file.size / 1048576).toFixed(2)} MB)`;
+            } else {
+                uploadBtn.disabled = true;
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(name => {
+            dropzone?.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+            dropzone?.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            });
+        });
+
+        const setProgress = (pct: number, status: string) => {
+            if (progressWrap) progressWrap.style.display = 'block';
+            if (progressBar) progressBar.style.width = `${pct}%`;
+            if (progressText) progressText.textContent = `${status} (${pct}%)`;
+        };
+
         document.getElementById('upload-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const input = document.getElementById('file-input') as HTMLInputElement;
-            const btn = document.getElementById('upload-btn') as HTMLButtonElement;
-            const file = input.files?.[0];
+            const file = fileInput?.files?.[0];
             if (!file) return;
 
-            btn.disabled = true;
+            uploadBtn.disabled = true;
+            setProgress(0, 'Initializing');
+
             try {
                 const start = await jsonOrThrow(await fetch('/api/vault/files/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: file.name, size: file.size }),
+                    body: JSON.stringify({ name: file.name, size: file.size, folder: currentFolderHidden }),
                 }));
 
                 const appended = file.size === 0 ? 0 : await (async () => {
@@ -130,40 +639,60 @@ const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
                             { method: 'POST', body: chunk }
                         ));
                         offset += chunk.byteLength;
-                        setProgress(`UPLOADING ${Math.round((offset / file.size) * 100)}%`);
+                        const pct = Math.round((offset / file.size) * 100);
+                        setProgress(pct, 'Uploading');
                     }
                     return offset;
                 })();
 
-                setProgress('COMMITTING…');
+                setProgress(95, 'Committing');
                 const finalChunk = file.size === 0
                     ? null
                     : await file.slice(appended, file.size).arrayBuffer();
                 const finishUrl = `/api/vault/files/finish?session=${encodeURIComponent(start.sessionId)}` +
                     `&offset=${appended}&name=${encodeURIComponent(start.name)}` +
+                    `${currentFolderHidden ? `&folder=${encodeURIComponent(currentFolderHidden)}` : ''}` +
                     `${finalChunk ? '&hasFinal=1' : ''}`;
+
                 await jsonOrThrow(await fetch(finishUrl, {
                     method: 'POST',
                     ...(finalChunk ? { body: finalChunk } : {}),
                 }));
 
-                setProgress('DONE');
-                window.location.reload();
+                setProgress(100, 'Complete');
+                toast(`"${file.name}" uploaded successfully`, 'ok');
+                setTimeout(() => window.location.reload(), 450);
             } catch (err: any) {
-                (window as any).__vaultToast(`Upload failed: ${err.message}`, 'error');
-                setProgress('');
-                btn.disabled = false;
+                toast(`Upload failed: ${err.message}`, 'error');
+                uploadBtn.disabled = false;
+                if (progressWrap) progressWrap.style.display = 'none';
             }
         });
 
-        // ---- Download via short-lived link (anchor click, popup-safe) ----
+        // ── 2. Download File ──────────────────────────────────────────────────────────
         document.querySelectorAll('.dl-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const name = (e.currentTarget as HTMLElement).dataset.name;
-                if (!name) return;
+                const el = e.currentTarget as HTMLElement;
+                const path = el.dataset.path;
+                const name = el.dataset.name || 'file';
+                const isLocked = el.dataset.locked === '1';
+                if (!path) return;
+
+                if (isLocked) {
+                    promptPin({
+                        path,
+                        name,
+                        isLocked: true,
+                        actionTitle: 'Unlock to Download',
+                        onSuccess: () => el.click()
+                    });
+                    return;
+                }
+
                 try {
+                    toast('Fetching download link…', 'ok');
                     const { url } = await jsonOrThrow(
-                        await fetch(`/api/vault/files/link?name=${encodeURIComponent(name)}`)
+                        await fetch(`/api/vault/files/link?path=${encodeURIComponent(path)}`)
                     );
                     const a = document.createElement('a');
                     a.href = url;
@@ -173,26 +702,417 @@ const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
                     a.click();
                     a.remove();
                 } catch (err: any) {
-                    (window as any).__vaultToast(err.message, 'error');
+                    toast(err.message, 'error');
                 }
             });
         });
 
-        // ---- Delete ----
-        document.querySelectorAll('.del-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const name = (e.currentTarget as HTMLElement).dataset.name;
-                if (!name || !confirm(`Delete "${name}"? This cannot be undone.`)) return;
-                try {
-                    await jsonOrThrow(await fetch('/api/vault/files/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name }),
-                    }));
-                    window.location.reload();
-                } catch (err: any) {
-                    (window as any).__vaultToast(err.message, 'error');
+        // ── 3. 4-Digit Security PIN Modal Handling ────────────────────────────────────
+        const pinBackdrop = document.getElementById('pin-backdrop');
+        const pinModalTitle = document.getElementById('pin-modal-title');
+        const pinModalDesc = document.getElementById('pin-modal-desc');
+        const pinDigitsInput = document.getElementById('pin-digits-input') as HTMLInputElement;
+        const pinModalError = document.getElementById('pin-modal-error');
+        const pinModalSubmit = document.getElementById('pin-modal-submit') as HTMLButtonElement;
+
+        interface PinModalOptions {
+            path: string;
+            name: string;
+            isLocked: boolean;
+            actionTitle?: string;
+            onSuccess?: () => void;
+        }
+
+        let currentPinOpts: PinModalOptions | null = null;
+
+        const promptPin = (opts: PinModalOptions) => {
+            currentPinOpts = opts;
+            if (pinDigitsInput) pinDigitsInput.value = '';
+            if (pinModalError) pinModalError.style.display = 'none';
+
+            if (opts.isLocked) {
+                if (pinModalTitle) pinModalTitle.textContent = opts.actionTitle || 'Unlock Protected Item';
+                if (pinModalDesc) pinModalDesc.innerHTML = `Enter the 4-digit PIN for <strong>"${opts.name}"</strong> to unlock it.`;
+                if (pinModalSubmit) pinModalSubmit.textContent = 'Unlock';
+            } else {
+                if (pinModalTitle) pinModalTitle.textContent = 'Set 4-Digit Security PIN';
+                if (pinModalDesc) pinModalDesc.innerHTML = `Enter a 4-digit PIN to lock <strong>"${opts.name}"</strong> against deletion or unauthorized modification.`;
+                if (pinModalSubmit) pinModalSubmit.textContent = 'Confirm Lock';
+            }
+
+            openModal(pinBackdrop);
+            setTimeout(() => pinDigitsInput?.focus(), 150);
+        };
+
+        document.getElementById('pin-modal-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentPinOpts) return;
+
+            const pin = pinDigitsInput.value.trim();
+            if (!/^\d{4}$/.test(pin)) {
+                if (pinModalError) {
+                    pinModalError.textContent = 'PIN must be exactly 4 digits (0-9)';
+                    pinModalError.style.display = 'block';
                 }
+                return;
+            }
+
+            pinModalSubmit.disabled = true;
+            const targetLock = !currentPinOpts.isLocked;
+
+            try {
+                await jsonOrThrow(await fetch('/api/vault/files/lock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path: currentPinOpts.path,
+                        locked: targetLock,
+                        pin: pin,
+                    }),
+                }));
+
+                toast(targetLock ? `"${currentPinOpts.name}" is now locked with PIN` : `"${currentPinOpts.name}" unlocked`, 'ok');
+                closeModal(pinBackdrop);
+
+                if (currentPinOpts.onSuccess) {
+                    currentPinOpts.onSuccess();
+                } else {
+                    setTimeout(() => window.location.reload(), 300);
+                }
+            } catch (err: any) {
+                if (pinModalError) {
+                    pinModalError.textContent = err.message || 'Incorrect PIN';
+                    pinModalError.style.display = 'block';
+                }
+                pinModalSubmit.disabled = false;
+            }
+        });
+
+        document.getElementById('pin-modal-close')?.addEventListener('click', () => closeModal(pinBackdrop));
+        document.getElementById('pin-modal-cancel')?.addEventListener('click', () => closeModal(pinBackdrop));
+        pinBackdrop?.addEventListener('click', (e) => {
+            if (e.target === pinBackdrop) closeModal(pinBackdrop);
+        });
+
+        // Trigger PIN modal from Lock/Unlock buttons
+        document.querySelectorAll('.open-pin-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const path = el.dataset.path || '';
+                const name = el.dataset.name || path;
+                const isLocked = el.dataset.locked === '1';
+                if (!path) return;
+
+                promptPin({ path, name, isLocked });
+            });
+        });
+
+        // Prevent opening locked folder without PIN
+        document.querySelectorAll('.folder-item-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const isLocked = el.dataset.locked === '1';
+                const path = el.dataset.path || '';
+                const name = el.dataset.name || path;
+                const href = (el as HTMLAnchorElement).href;
+
+                if (isLocked) {
+                    e.preventDefault();
+                    promptPin({
+                        path,
+                        name,
+                        isLocked: true,
+                        actionTitle: 'Unlock Folder to Enter',
+                        onSuccess: () => {
+                            window.location.href = href;
+                        }
+                    });
+                }
+            });
+        });
+
+        // ── 4. Photo Lightbox Viewer ──────────────────────────────────────────────────
+        const lightboxBackdrop = document.getElementById('lightbox-backdrop');
+        const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement;
+        const lightboxFilename = document.getElementById('lightbox-filename');
+        const lightboxLoader = document.getElementById('lightbox-loader');
+        const lightboxMeta = document.getElementById('lightbox-meta');
+        const lightboxDlBtn = document.getElementById('lightbox-dl-btn');
+
+        document.querySelectorAll('.open-photo-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const path = el.dataset.path;
+                const name = el.dataset.name || 'Photo';
+                const size = el.dataset.size || '';
+                const isLocked = el.dataset.locked === '1';
+                if (!path) return;
+
+                if (isLocked) {
+                    promptPin({
+                        path,
+                        name,
+                        isLocked: true,
+                        actionTitle: 'Unlock to View Photo',
+                        onSuccess: () => el.click()
+                    });
+                    return;
+                }
+
+                if (lightboxFilename) lightboxFilename.textContent = name;
+                if (lightboxMeta) lightboxMeta.textContent = `Size: ${size} · Path: ${path}`;
+                if (lightboxLoader) lightboxLoader.style.display = 'block';
+                if (lightboxImg) lightboxImg.style.display = 'none';
+
+                openModal(lightboxBackdrop);
+
+                try {
+                    const { url } = await jsonOrThrow(
+                        await fetch(`/api/vault/files/link?path=${encodeURIComponent(path)}`)
+                    );
+                    if (lightboxImg) {
+                        lightboxImg.src = url;
+                        lightboxImg.onload = () => {
+                            if (lightboxLoader) lightboxLoader.style.display = 'none';
+                            lightboxImg.style.display = 'block';
+                            if (lightboxMeta) {
+                                lightboxMeta.textContent = `${lightboxImg.naturalWidth} × ${lightboxImg.naturalHeight} px · ${size} · ${path}`;
+                            }
+                        };
+                    }
+                    if (lightboxDlBtn) {
+                        lightboxDlBtn.onclick = () => {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = name;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        };
+                    }
+                } catch (err: any) {
+                    toast(`Failed to load photo: ${err.message}`, 'error');
+                    closeModal(lightboxBackdrop);
+                }
+            });
+        });
+
+        document.getElementById('lightbox-close-btn')?.addEventListener('click', () => closeModal(lightboxBackdrop));
+        lightboxBackdrop?.addEventListener('click', (e) => {
+            if (e.target === lightboxBackdrop) closeModal(lightboxBackdrop);
+        });
+
+        // ── 5. Audio Player Modal ─────────────────────────────────────────────────────
+        const audioBackdrop = document.getElementById('audio-backdrop');
+        const audioElem = document.getElementById('vault-audio-element') as HTMLAudioElement;
+        const audioFilename = document.getElementById('audio-modal-filename');
+        const audioPlayToggle = document.getElementById('audio-play-toggle') as HTMLButtonElement;
+        const audioSeek = document.getElementById('audio-seek') as HTMLInputElement;
+        const audioTimeCurrent = document.getElementById('audio-time-current');
+        const audioTimeTotal = document.getElementById('audio-time-total');
+        const audioVolume = document.getElementById('audio-volume') as HTMLInputElement;
+        const audioWaves = document.getElementById('audio-waves');
+        const audioDlBtn = document.getElementById('audio-dl-btn');
+
+        document.querySelectorAll('.open-audio-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const path = el.dataset.path;
+                const name = el.dataset.name || 'Audio Track';
+                const isLocked = el.dataset.locked === '1';
+                if (!path) return;
+
+                if (isLocked) {
+                    promptPin({
+                        path,
+                        name,
+                        isLocked: true,
+                        actionTitle: 'Unlock to Play Audio',
+                        onSuccess: () => el.click()
+                    });
+                    return;
+                }
+
+                if (audioFilename) audioFilename.textContent = name;
+                openModal(audioBackdrop);
+
+                try {
+                    const { url } = await jsonOrThrow(
+                        await fetch(`/api/vault/files/link?path=${encodeURIComponent(path)}`)
+                    );
+                    audioElem.src = url;
+                    audioElem.play().catch(() => {});
+                    audioPlayToggle.textContent = 'Pause';
+                    audioWaves?.classList.add('playing');
+
+                    if (audioDlBtn) {
+                        audioDlBtn.onclick = () => {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = name;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        };
+                    }
+                } catch (err: any) {
+                    toast(err.message, 'error');
+                    closeModal(audioBackdrop);
+                }
+            });
+        });
+
+        audioPlayToggle?.addEventListener('click', () => {
+            if (audioElem.paused) {
+                audioElem.play();
+                audioPlayToggle.textContent = 'Pause';
+                audioWaves?.classList.add('playing');
+            } else {
+                audioElem.pause();
+                audioPlayToggle.textContent = 'Play';
+                audioWaves?.classList.remove('playing');
+            }
+        });
+
+        audioElem?.addEventListener('timeupdate', () => {
+            if (!audioElem.duration) return;
+            const pct = (audioElem.currentTime / audioElem.duration) * 100;
+            audioSeek.value = String(pct);
+            if (audioTimeCurrent) audioTimeCurrent.textContent = formatTime(audioElem.currentTime);
+        });
+
+        audioElem?.addEventListener('loadedmetadata', () => {
+            if (audioTimeTotal) audioTimeTotal.textContent = formatTime(audioElem.duration);
+        });
+
+        audioSeek?.addEventListener('input', () => {
+            if (!audioElem.duration) return;
+            audioElem.currentTime = (Number(audioSeek.value) / 100) * audioElem.duration;
+        });
+
+        audioVolume?.addEventListener('input', () => {
+            audioElem.volume = Number(audioVolume.value);
+        });
+
+        const stopAudioModal = () => {
+            audioElem.pause();
+            audioElem.src = '';
+            audioWaves?.classList.remove('playing');
+            closeModal(audioBackdrop);
+        };
+
+        document.getElementById('audio-close-btn')?.addEventListener('click', stopAudioModal);
+        audioBackdrop?.addEventListener('click', (e) => {
+            if (e.target === audioBackdrop) stopAudioModal();
+        });
+
+        // ── 6. Confirm Deletion Modal ─────────────────────────────────────────────────
+        const deleteBackdrop = document.getElementById('delete-backdrop');
+        const deleteModalText = document.getElementById('delete-modal-text');
+        const deleteLockedNotice = document.getElementById('delete-locked-notice');
+        const deleteModalConfirm = document.getElementById('delete-modal-confirm') as HTMLButtonElement;
+        let pendingDeletePath = '';
+
+        document.querySelectorAll('.open-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const path = el.dataset.path || '';
+                const name = el.dataset.name || '';
+                const isLocked = el.dataset.locked === '1';
+                const type = el.dataset.type || 'item';
+
+                pendingDeletePath = path;
+
+                if (deleteModalText) {
+                    deleteModalText.innerHTML = `Are you sure you want to permanently delete the ${type} <strong>"${name}"</strong>? This action cannot be undone.`;
+                }
+
+                if (isLocked) {
+                    if (deleteLockedNotice) deleteLockedNotice.style.display = 'block';
+                    deleteModalConfirm.disabled = true;
+                    deleteModalConfirm.textContent = 'Locked with PIN';
+                } else {
+                    if (deleteLockedNotice) deleteLockedNotice.style.display = 'none';
+                    deleteModalConfirm.disabled = false;
+                    deleteModalConfirm.textContent = 'Delete Permanently';
+                }
+
+                openModal(deleteBackdrop);
+            });
+        });
+
+        deleteModalConfirm?.addEventListener('click', async () => {
+            if (!pendingDeletePath) return;
+            deleteModalConfirm.disabled = true;
+            deleteModalConfirm.textContent = 'Deleting…';
+
+            try {
+                await jsonOrThrow(await fetch('/api/vault/files/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: pendingDeletePath }),
+                }));
+                toast(`Deleted successfully`, 'ok');
+                setTimeout(() => window.location.reload(), 350);
+            } catch (err: any) {
+                toast(err.message, 'error');
+                deleteModalConfirm.disabled = false;
+                deleteModalConfirm.textContent = 'Delete Permanently';
+            }
+        });
+
+        document.getElementById('delete-modal-close')?.addEventListener('click', () => closeModal(deleteBackdrop));
+        document.getElementById('delete-modal-cancel')?.addEventListener('click', () => closeModal(deleteBackdrop));
+        deleteBackdrop?.addEventListener('click', (e) => {
+            if (e.target === deleteBackdrop) closeModal(deleteBackdrop);
+        });
+
+        // ── 7. New Folder Modal ───────────────────────────────────────────────────────
+        const folderBackdrop = document.getElementById('folder-backdrop');
+        const folderForm = document.getElementById('folder-form');
+        const folderNameInput = document.getElementById('folder-name-input') as HTMLInputElement;
+
+        document.getElementById('open-new-folder-btn')?.addEventListener('click', () => {
+            if (folderNameInput) folderNameInput.value = '';
+            openModal(folderBackdrop);
+            setTimeout(() => folderNameInput?.focus(), 100);
+        });
+
+        folderForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const folder = folderNameInput.value.trim();
+            if (!folder) return;
+
+            try {
+                toast(`Creating folder "${folder}"…`, 'ok');
+                await jsonOrThrow(await fetch('/api/vault/files/mkdir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder, parentPath: currentFolderHidden }),
+                }));
+                toast(`Folder "${folder}" created`, 'ok');
+                closeModal(folderBackdrop);
+                setTimeout(() => window.location.reload(), 350);
+            } catch (err: any) {
+                toast(err.message, 'error');
+            }
+        });
+
+        document.getElementById('folder-modal-close')?.addEventListener('click', () => closeModal(folderBackdrop));
+        document.getElementById('folder-modal-cancel')?.addEventListener('click', () => closeModal(folderBackdrop));
+        folderBackdrop?.addEventListener('click', (e) => {
+            if (e.target === folderBackdrop) closeModal(folderBackdrop);
+        });
+
+        // ── 8. Search Filter ─────────────────────────────────────────────────────────
+        const searchInput = document.getElementById('files-search') as HTMLInputElement | null;
+        const itemRows = document.querySelectorAll('.item-row') as NodeListOf<HTMLElement>;
+
+        searchInput?.addEventListener('input', () => {
+            const query = searchInput.value.trim().toLowerCase();
+            itemRows.forEach(row => {
+                const name = row.dataset.name || '';
+                row.style.display = !query || name.includes(query) ? 'flex' : 'none';
             });
         });
     </script>
