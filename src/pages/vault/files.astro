@@ -589,7 +589,18 @@ const resolveRelPath = (name: string) => (currentFolder ? `${currentFolder}/${na
 
         // Utilities
         const toast = (msg: string, type: 'ok' | 'error' = 'ok') => {
-            (window as any).__vaultToast(msg, type);
+            if (typeof (window as any).__vaultToast === 'function') {
+                (window as any).__vaultToast(msg, type);
+            } else {
+                const el = document.getElementById('vault-toast');
+                if (el) {
+                    el.textContent = msg;
+                    el.className = `vault-toast shown ${type}`;
+                    setTimeout(() => {
+                        el.className = `vault-toast ${type}`;
+                    }, 3200);
+                }
+            }
         };
 
         const jsonOrThrow = async (res: Response) => {

@@ -85,7 +85,7 @@ const hoursLeft = Math.floor((msLeft % 86_400_000) / 3_600_000);
         <div id="vault-toast" class="vault-toast" role="status" aria-live="polite"></div>
     </div>
 
-    <script>
+    <script is:inline>
         document.getElementById('vault-logout')?.addEventListener('click', async () => {
             try {
                 await fetch('/api/session?logout');
@@ -93,13 +93,14 @@ const hoursLeft = Math.floor((msLeft % 86_400_000) / 3_600_000);
             window.location.href = '/';
         });
 
-        (window as any).__vaultToast = function (msg: string, kind: 'ok' | 'error' = 'ok') {
-            const el = document.getElementById('vault-toast');
+        window.__vaultToast = function (msg, kind) {
+            kind = kind || 'ok';
+            var el = document.getElementById('vault-toast');
             if (!el) return;
             el.textContent = msg;
-            el.className = `vault-toast shown ${kind}`;
-            setTimeout(() => {
-                el.className = `vault-toast ${kind}`;
+            el.className = 'vault-toast shown ' + kind;
+            setTimeout(function () {
+                el.className = 'vault-toast ' + kind;
             }, 3200);
         };
     </script>
