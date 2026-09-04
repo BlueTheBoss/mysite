@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { isAuthenticated, createRateLimiter, getClientIp } from '../../../../lib/security';
 import { jsonResponse } from '../../../../lib/http';
-import { finishUploadSession, FILES_DIR, safeFilename } from '../../../../lib/vault';
+import { finishUploadSession, FILES_DIR, safeFilename, safeRelPath } from '../../../../lib/vault';
 
 export const prerender = false;
 
