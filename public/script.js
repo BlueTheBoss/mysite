@@ -1596,93 +1596,61 @@ Theme: Hybrid Brutalism
     })();
 
     // =============================================
-    // FEATURE 16: LIVE GITHUB STATS
+    // FEATURE 16: INTERACTIVE CORE TECH STACK
     // =============================================
     (function() {
-        const titleEl = document.getElementById('github-langs-title');
-        const statsEl = document.getElementById('github-stats');
-        
-        if (!titleEl || !statsEl) return;
+        const pills = document.querySelectorAll('.stack-pill');
+        const badgeItems = document.querySelectorAll('.stack-badge-item');
+        const descEl = document.getElementById('stack-context-desc');
 
-        const GITHUB_USERNAME = 'BlueTheBoss';
-        const CACHE_KEY = 'gh_lang_stats_v1';
-        const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+        if (!pills.length || !badgeItems.length) return;
 
-        const readCache = () => {
-            try {
-                const raw = localStorage.getItem(CACHE_KEY);
-                return raw ? JSON.parse(raw) : null;
-            } catch { return null; }
+        const defaultDesc = '<strong>Powers:</strong> This site (Astro + Turso + Dropbox), Kizamu, Amixi AI, & SDM660 Kernel.';
+        const categoryDescs = {
+            all: '<strong>Powers:</strong> This site (Astro + Turso + Dropbox), Kizamu (Next.js + Supabase), Amixi (Python + Groq), & SDM660 Kernel (C).',
+            frontend: '<strong>Frontend:</strong> TypeScript, Astro SSR & React powering Armevox Portfolio, Kizamu Sanctuary & Math Titan.',
+            backend: '<strong>Backend:</strong> Node.js serverless APIs, Python/Groq AI for Amixi, Go for packet sniffing & Turso/Supabase DBs.',
+            systems: '<strong>Systems:</strong> Low-level C and ARM64 Assembly powering the Xiaomi SDM660 custom Android kernel & AOSP.'
         };
 
-        const renderStats = (repos) => {
-            const langCounts = {};
-            let totalRepos = 0;
+        pills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                pills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                const cat = pill.dataset.cat || 'all';
 
-            repos.forEach(repo => {
-                if (repo.language && !repo.fork) {
-                    langCounts[repo.language] = (langCounts[repo.language] || 0) + 1;
-                    totalRepos++;
+                badgeItems.forEach(item => {
+                    if (cat === 'all' || item.dataset.cat === cat) {
+                        item.classList.remove('hidden-cat');
+                    } else {
+                        item.classList.add('hidden-cat');
+                    }
+                });
+
+                if (descEl) {
+                    descEl.innerHTML = categoryDescs[cat] || defaultDesc;
+                }
+            });
+        });
+
+        // Hover effect on badges to highlight project context
+        badgeItems.forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const name = item.dataset.name || '';
+                const desc = item.dataset.desc || '';
+                if (descEl && name && desc) {
+                    descEl.innerHTML = `<strong>${name}:</strong> ${desc}`;
                 }
             });
 
-            const sortedLangs = Object.entries(langCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3); // Top 3
-
-            if (sortedLangs.length >= 2) {
-                titleEl.textContent = `${sortedLangs[0][0]} & ${sortedLangs[1][0]}`;
-            } else if (sortedLangs.length === 1) {
-                titleEl.textContent = sortedLangs[0][0];
-            }
-
-            let statsHtml = '';
-            sortedLangs.forEach(([lang, count]) => {
-                const percentage = Math.round((count / totalRepos) * 100);
-                const filled = Math.ceil(percentage / 10);
-                // ASCII bars that fill in left-to-right when rendered
-                const segs = Array.from({ length: 10 }, (_, i) =>
-                    `<span class="bar-seg${i < filled ? ' on' : ''}" style="--d:${i * 70}ms">${i < filled ? '█' : '░'}</span>`
-                ).join('');
-                statsHtml += `<div>${lang.padEnd(10, ' ')} ${segs} ${percentage}%</div>`;
-            });
-
-            statsEl.innerHTML = statsHtml || '<div>No language data found.</div>';
-        };
-
-        // Serve from cache when fresh — spares the unauthenticated API
-        // quota (60 req/hr/IP) and makes repeat visits instant.
-        const cached = readCache();
-        if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
-            renderStats(cached.repos);
-            return;
-        }
-
-        fetch(`https://api.github.com/users/${GITHUB_USERNAME}/repos?sort=updated&per_page=100`)
-            .then(res => {
-                if (!res.ok) throw new Error('API Rate Limit or Error');
-                return res.json();
-            })
-            .then(repos =>
-                // Keep only what we need so the localStorage entry stays tiny
-                repos.map(r => ({ language: r.language, fork: r.fork }))
-            )
-            .then(repos => {
-                try {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), repos }));
-                } catch { /* storage full/blocked — non-fatal */ }
-                renderStats(repos);
-            })
-            .catch(err => {
-                // Rate-limited or offline: fall back to stale cache if we have one
-                const stale = cached || readCache();
-                if (stale) {
-                    renderStats(stale.repos);
-                    return;
+            item.addEventListener('mouseleave', () => {
+                const activePill = document.querySelector('.stack-pill.active');
+                const cat = activePill?.dataset.cat || 'all';
+                if (descEl) {
+                    descEl.innerHTML = categoryDescs[cat] || defaultDesc;
                 }
-                titleEl.textContent = "Java & Python";
-                statsEl.innerHTML = "<div>Error connecting to GitHub.</div>";
             });
+        });
     })();
 
     // =============================================

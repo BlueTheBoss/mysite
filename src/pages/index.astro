@@ -113,13 +113,84 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                     </div>
                 </div>
 
-                <!-- Mastery Box -->
+                <!-- Core Tech Stack Box -->
                 <div class="bento-card-item sketchy-box reveal delay-100" id="core-stack-card">
-                    <div class="wireframe-label">[API:LIVE-DATA]</div>
-                    <div class="bento-label">Live Core Stack</div>
-                    <h3 id="github-langs-title" class="raw-tag" data-tag="h3">Scanning...</h3>
-                    <div id="github-stats" style="font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent-base); margin-top: 0.5rem; line-height: 1.4;">Connecting to GitHub API...</div>
-                    <p class="raw-tag" data-tag="p" style="margin-top: 1rem; font-size: 0.9rem; line-height: 1.3;">Top languages calculated in real-time from my public repositories.</p>
+                    <div class="wireframe-label">[DEV:FULL-STACK]</div>
+                    <div class="bento-label">Core Tech Stack</div>
+                    <h3 class="raw-tag" data-tag="h3" style="margin-bottom: 0.6rem;">Full-Stack & Systems</h3>
+                    
+                    <!-- Interactive Category Filter -->
+                    <div class="stack-category-pills">
+                        <button type="button" class="stack-pill active" data-cat="all">ALL</button>
+                        <button type="button" class="stack-pill" data-cat="frontend">FRONTEND</button>
+                        <button type="button" class="stack-pill" data-cat="backend">BACKEND</button>
+                        <button type="button" class="stack-pill" data-cat="systems">SYSTEMS</button>
+                    </div>
+
+                    <!-- Tech Badges Grid -->
+                    <div class="stack-badges-grid" id="stack-badges-container">
+                        <!-- Frontend: Powers This Site, Kizamu, Math Titan -->
+                        <div class="stack-badge-item" data-cat="frontend" data-name="TypeScript" data-desc="Primary typed language powering This Site, Kizamu, and Math Titan">
+                            <span class="stack-tag-code">TS</span>
+                            <span class="stack-tag-name">TypeScript</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="frontend" data-name="Astro (SSR)" data-desc="Engine powering this site: Armevox Portfolio & File Vault">
+                            <span class="stack-tag-code">ASTRO</span>
+                            <span class="stack-tag-name">Astro (SSR)</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="frontend" data-name="React / Next.js" data-desc="Component framework powering Kizamu Sanctuary & ArmChat">
+                            <span class="stack-tag-code">REACT</span>
+                            <span class="stack-tag-name">React / Next</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="frontend" data-name="HTML5 & CSS3" data-desc="Modern CSS3 & layout architecture powering all portfolio sites">
+                            <span class="stack-tag-code">UI</span>
+                            <span class="stack-tag-name">HTML5 / CSS3</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="frontend" data-name="JavaScript" data-desc="Vanilla DOM and algorithm engine for QR Matrix Encoder">
+                            <span class="stack-tag-code">JS</span>
+                            <span class="stack-tag-name">JavaScript</span>
+                        </div>
+
+                        <!-- Backend & Cloud: Powers Serverless, AI Bot, Packet Sniffer -->
+                        <div class="stack-badge-item" data-cat="backend" data-name="Node.js" data-desc="Serverless API runtime powering this site and ArmChat Oasis">
+                            <span class="stack-tag-code">NODE</span>
+                            <span class="stack-tag-name">Node.js</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="backend" data-name="Python (AI)" data-desc="AsyncIO and Groq LLM agent powering Amixi Sentinel AI">
+                            <span class="stack-tag-code">PY</span>
+                            <span class="stack-tag-name">Python (AI)</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="backend" data-name="Go (Golang)" data-desc="Raw network socket listener powering Packet Sniffer CLI">
+                            <span class="stack-tag-code">GO</span>
+                            <span class="stack-tag-name">Go (Golang)</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="backend" data-name="WebSockets" data-desc="Bi-directional real-time communication in ArmChat Oasis">
+                            <span class="stack-tag-code">WS</span>
+                            <span class="stack-tag-name">WebSockets</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="backend" data-name="Turso & Supabase" data-desc="Turso SQLite for this site; Supabase Postgres for Kizamu">
+                            <span class="stack-tag-code">SQL</span>
+                            <span class="stack-tag-name">Turso & Supabase</span>
+                        </div>
+
+                        <!-- Systems & Low-Level: Powers SDM660 Kernel, AOSP, Linux -->
+                        <div class="stack-badge-item" data-cat="systems" data-name="C (Kernel)" data-desc="Low-level kernel programming for Xiaomi SDM660">
+                            <span class="stack-tag-code">C</span>
+                            <span class="stack-tag-name">C (Kernel)</span>
+                        </div>
+                        <div class="stack-badge-item" data-cat="systems" data-name="ARM64 Assembly" data-desc="Assembly tuning and hardware optimization for AOSP / Kernel">
+                            <span class="stack-tag-code">ASM</span>
+                            <span class="stack-tag-name">ARM64 Asm</span>
+                        </div>
+                    </div>
+
+                    <!-- Context Footer -->
+                    <div class="stack-context-footer">
+                        <span class="stack-dot-live">●</span>
+                        <div id="stack-context-desc">
+                            <strong>Powers:</strong> This site (Astro + Turso + Dropbox), Kizamu, Amixi AI, & SDM660 Kernel.
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Music Box -->

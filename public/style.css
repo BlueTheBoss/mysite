@@ -2827,6 +2827,110 @@ main {
     bottom: -20%;
 }
 
+/* Core Stack Category Pills & Badges */
+.stack-category-pills {
+    display: flex;
+    gap: 0.35rem;
+    margin: 0.5rem 0 0.85rem 0;
+    flex-wrap: wrap;
+}
+
+.stack-pill {
+    font-family: monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border-radius: 0;
+}
+
+.stack-pill:hover {
+    border-color: var(--accent-base);
+    color: var(--text-base);
+}
+
+.stack-pill.active {
+    background: var(--accent-base);
+    color: var(--bg-body);
+    border-color: var(--accent-base);
+    font-weight: 800;
+    box-shadow: 2px 2px 0px 0px var(--border-color);
+}
+
+.stack-badges-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.85rem;
+}
+
+.stack-badge-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    padding: 0.35rem 0.5rem;
+    font-family: monospace;
+    font-size: 0.74rem;
+    cursor: default;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stack-badge-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-base);
+    box-shadow: 3px 3px 0px 0px var(--border-color);
+}
+
+.stack-badge-item.hidden-cat {
+    display: none !important;
+}
+
+.stack-tag-code {
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 0.12rem 0.3rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--accent-base);
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.stack-tag-name {
+    font-weight: 600;
+    color: var(--text-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stack-context-footer {
+    margin-top: auto;
+    padding-top: 0.65rem;
+    border-top: 1px dashed var(--border-color);
+    font-family: monospace;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+}
+
+.stack-dot-live {
+    color: #a6e3a1;
+    font-size: 0.65rem;
+    margin-top: 0.15rem;
+    animation: pulse 2s infinite ease-in-out;
+}
+
 /* Music Card: Headphones */
 #music-card::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 18v-6a9 9 0 0 1 18 0v6'%3E%3C/path%3E%3Cpath d='M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z'%3E%3C/path%3E%3C/svg%3E");
